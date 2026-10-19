@@ -132,7 +132,7 @@ export class ChatRoom extends DurableObject {
     if (!name) return this.reject(ws, "Use 2 to 20 letters, numbers, spaces, or _ - .", "badname");
 
     const cid = String(data.cid || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 64);
-    if (this.isBlocked(cid, me.iph)) return this.reject(ws, "You have been blocked from this chat.", "blocked");
+    //---- if (this.isBlocked(cid, me.iph)) return this.reject(ws, "You have been blocked from this chat.", "blocked"); ----
 
     const adminName = cleanName(this.env.ADMIN_NAME) || "Admin";
     let admin = false;
@@ -151,6 +151,7 @@ export class ChatRoom extends DurableObject {
       this.failed.delete(me.iph);
       admin = true;
     }
+        if (!admin && this.isBlocked(cid, me.iph)) return this.reject(ws, "You have been blocked from this chat.", "blocked");
 
     // Name must be unique among people currently online.
     for (const other of this.ctx.getWebSockets()) {
