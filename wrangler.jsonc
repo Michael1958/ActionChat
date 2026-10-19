@@ -1,0 +1,26 @@
+{
+  // Action Chat - Cloudflare Worker + Durable Object (free plan compatible)
+  "name": "action-chat",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+
+  // The admin's username. Change it here if you want a different one.
+  // The admin PASSWORD is NOT stored here. Add it in the Cloudflare dashboard
+  // as a Secret named ADMIN_PASSWORD.
+  "vars": {
+    "ADMIN_NAME": "Admin"
+  },
+
+  "durable_objects": {
+    "bindings": [{ "name": "CHAT_ROOM", "class_name": "ChatRoom" }]
+  },
+
+  // Free plan requires the SQLite type of Durable Object.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }],
+
+  // Lets the code import the web page and the logo as files.
+  "rules": [
+    { "type": "Text", "globs": ["**/*.html"], "fallthrough": true },
+    { "type": "Data", "globs": ["**/*.png"], "fallthrough": true }
+  ]
+}

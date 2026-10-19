@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Action Chat</title>
+<link rel="icon" href="/logo.png">
+<style>
+  :root {
+    --bg: #0d1016; --panel: #11151d; --panel2: #161b25; --line: #222936;
+    --text: #e7eaf0; --muted: #8a94a6; --accent: #2f7ff7; --accent2: #1f6ae0;
+    --green: #22c55e; --red: #ef4444; --gold: #d4af37; --code: #0a0d13;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  input, textarea { font: inherit; color: var(--text); }
+  .hidden { display: none !important; }
+  svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round; display: block; }
+
+  /* ---------- Join screen ---------- */
+  #join { height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { width: 100%; max-width: 360px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 28px 24px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+  .card img { width: 96px; height: 96px; }
+  .card h1 { margin: 8px 0 4px; font-size: 24px; letter-spacing: .3px; }
+  .card p { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+  .field { width: 100%; padding: 11px 13px; margin-bottom: 10px; background: var(--panel2);
+    border: 1px solid var(--line); border-radius: 8px; outline: none; }
+  .field:focus { border-color: var(--accent); }
+  .btn { width: 100%; padding: 11px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; }
+  .btn:hover { background: var(--accent2); }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .err { color: #ff7a7a; font-size: 13px; min-height: 18px; margin-top: 10px; }
+
+  /* ---------- Chat layout ---------- */
+  #app { height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+    background: var(--panel); flex: 0 0 auto; }
+  header img { width: 36px; height: 36px; }
+  header h2 { margin: 0; font-size: 19px; font-weight: 600; white-space: nowrap; }
+  .spacer { flex: 1; }
+  .online-pill { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 20px; color: var(--text); font-size: 14px; }
+  .online-pill:hover { background: var(--panel2); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+  .sep { width: 1px; height: 24px; background: var(--line); }
+  .icon-btn { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); }
+  .icon-btn:hover { background: var(--panel2); color: var(--text); }
+  .icon-btn.on { color: var(--accent); }
+
+  #searchBar { padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  #searchBar input { width: 100%; padding: 8px 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; outline: none; }
+
+  #status { padding: 6px 14px; font-size: 13px; text-align: center; background: #3a2a0a; color: #ffd48a; }
+
+  .body { flex: 1; display: flex; min-height: 0; position: relative; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #messages { flex: 1; overflow-y: auto; padding: 14px 6px 8px 14px; scroll-behavior: auto; }
+  .notice { text-align: center; color: var(--muted); font-size: 12.5px; margin: 4px 0 14px; }
+
+  .msg { display: flex; gap: 12px; padding: 6px 8px; border-radius: 8px; position: relative; }
+  .msg:hover { background: rgba(255,255,255,.025); }
+  .avatar { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 600; color: #fff; font-size: 15px; }
+  .avatar.admin { background: #1a1608 !important; border: 1.5px solid var(--gold); overflow: hidden; }
+  .avatar.admin img { width: 30px; height: 30px; }
+  .meta { display: flex; align-items: baseline; gap: 8px; }
+  .name { font-weight: 600; font-size: 14.5px; }
+  .name.admin { color: var(--gold); }
+  .badge { font-size: 10.5px; font-weight: 700; color: #1a1608; background: var(--gold); padding: 1px 6px; border-radius: 4px; letter-spacing: .3px; }
+  .time { color: #6f7b8f; font-size: 12px; }
+  .content { min-width: 0; flex: 1; }
+  .text { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+  .text pre { margin: 6px 0; padding: 10px 12px; background: var(--code); border: 1px solid var(--line);
+    border-radius: 8px; overflow-x: auto; max-width: 560px; }
+  .text code { font: 13px/1.5 Consolas, "Cascadia Code", Menlo, monospace; color: #9ecbff; white-space: pre; }
+  .pic { position: relative; display: inline-block; margin-top: 6px; }
+  .pic img { display: block; max-width: min(280px, 100%); max-height: 260px; border-radius: 8px; cursor: zoom-in; background: #000; }
+  .gif-tag { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.75); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .tools { position: absolute; top: 4px; right: 8px; display: none; gap: 2px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+  .is-admin .msg:hover .tools { display: flex; }
+  .tools button { width: 30px; height: 28px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); }
+  .tools button:hover { color: var(--red); background: rgba(239,68,68,.12); }
+  .tools svg { width: 17px; height: 17px; }
+  .sys { text-align: center; color: var(--muted); font-size: 12.5px; padding: 4px; }
+
+  #newMsgs { position: absolute; left: 50%; transform: translateX(-50%); bottom: 78px; background: var(--accent); color: #fff;
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+
+  /* ---------- Composer ---------- */
+  .composer { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+  .round { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--muted); }
+  .round:hover { color: var(--text); }
+  .round svg { width: 22px; height: 22px; }
+  #input { flex: 1; min-width: 0; resize: none; height: 40px; max-height: 120px; padding: 9px 12px; background: var(--panel2);
+    border: 1px solid var(--line); border-radius: 8px; outline: none; line-height: 1.4; }
+  #input:focus { border-color: #34405a; }
+  .gif-btn { font-size: 10.5px; font-weight: 800; border: 1.6px solid currentColor; border-radius: 4px; padding: 1px 3px; line-height: 1.1; }
+  #sendBtn { padding: 0 26px; height: 40px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; flex: 0 0 auto; }
+  #sendBtn:hover { background: var(--accent2); }
+
+  /* ---------- Online list ---------- */
+  aside { width: 230px; flex: 0 0 230px; border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; }
+  aside h3 { margin: 0; padding: 14px 16px 8px; font-size: 15px; font-weight: 600; }
+  #users { overflow-y: auto; padding: 0 8px 12px; flex: 1; }
+  .user { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font-size: 14px; position: relative; }
+  .user:hover { background: var(--panel2); }
+  .user .avatar { width: 24px; height: 24px; flex-basis: 24px; font-size: 11.5px; }
+  .user .avatar.admin img { width: 20px; height: 20px; }
+  .user .uname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user .you { color: var(--muted); font-size: 12px; }
+  .user .ban { display: none; width: 26px; height: 26px; border-radius: 6px; place-items: center; color: var(--muted); }
+  .is-admin .user:hover .ban { display: grid; }
+  .user .ban:hover { color: var(--red); background: rgba(239,68,68,.12); }
+  .user .ban svg { width: 16px; height: 16px; }
+
+  /* ---------- Popovers & dialogs ---------- */
+  .pop { position: absolute; z-index: 20; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #emojiPop { left: 14px; bottom: 64px; width: 316px; max-width: calc(100% - 28px); height: 250px; overflow-y: auto; padding: 8px;
+    display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+  #emojiPop button { font-size: 22px; height: 36px; border-radius: 6px; }
+  #emojiPop button:hover { background: rgba(255,255,255,.08); }
+  #menu { right: 10px; top: 52px; min-width: 220px; padding: 6px; }
+  #menu button { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 6px; font-size: 14px; }
+  #menu button:hover { background: rgba(255,255,255,.06); }
+  #menu .danger { color: #ff8080; }
+  #menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+  #menu .label { padding: 6px 12px 2px; font-size: 11.5px; color: var(--gold); text-transform: uppercase; letter-spacing: .6px; }
+
+  .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .dialog { width: 100%; max-width: 380px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .dialog h4 { margin: 0 0 12px; font-size: 17px; }
+  .dialog label { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; font-size: 14px; color: #cfd5df; }
+  .dialog label small { color: var(--muted); display: block; }
+  .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .btn2 { padding: 8px 16px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); }
+  .btn-red { padding: 8px 16px; border-radius: 8px; background: var(--red); color: #fff; font-weight: 600; }
+  .blist { max-height: 300px; overflow-y: auto; }
+  .bitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .bitem small { color: var(--muted); display: block; }
+  #lightbox img { max-width: 95vw; max-height: 90vh; border-radius: 8px; }
+  #toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: #2b3240; color: #fff; padding: 9px 16px;
+    border-radius: 8px; font-size: 14px; z-index: 60; box-shadow: 0 6px 20px rgba(0,0,0,.5); max-width: 90%; text-align: center; }
+  #toast.bad { background: #5b1f1f; }
+
+  /* ---------- Small screens ---------- */
+  @media (max-width: 760px) {
+    aside { position: absolute; right: 0; top: 0; bottom: 0; z-index: 15; box-shadow: -10px 0 30px rgba(0,0,0,.5); display: none; }
+    aside.open { display: flex; }
+    header { padding: 8px 10px; gap: 8px; }
+    header h2 { font-size: 17px; }
+    .sep { display: none; }
+    .composer { gap: 6px; padding: 8px; }
+    .composer .round, #imgBtn, #gifBtn { width: 36px; height: 36px; flex-basis: 36px; }
+    #sendBtn { padding: 0 14px; }
+    .is-admin .msg .tools { display: flex; position: static; float: right; }
+    .is-admin .user .ban { display: grid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Join screen ===== -->
+<div id="join">
+  <form class="card" id="joinForm" autocomplete="off">
+    <img src="/logo.png" alt="Action Chat logo">
+    <h1>Action Chat</h1>
+    <p>Pick a name to join. No sign-up needed.<br>Messages are not saved.</p>
+    <input class="field" id="nameInput" maxlength="20" placeholder="Your name" required>
+    <input class="field hidden" id="pwInput" type="password" placeholder="Admin password">
+    <button class="btn" id="joinBtn" type="submit">Join chat</button>
+    <div class="err" id="joinErr"></div>
+  </form>
+</div>
+
+<!-- ===== Chat ===== -->
+<div id="app" class="hidden">
+  <header>
+    <img src="/logo.png" alt="">
+    <h2>Action Chat</h2>
+    <div class="spacer"></div>
+    <button class="online-pill" id="onlineBtn" title="Who is online"><span class="dot"></span><span id="onlineCount">0</span><span>online</span></button>
+    <div class="sep"></div>
+    <button class="icon-btn" id="searchBtn" title="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+    <button class="icon-btn" id="menuBtn" title="Menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="19" r="1.3" fill="currentColor"/></svg></button>
+  </header>
+  <div id="searchBar" class="hidden"><input id="searchInput" placeholder="Search messages or names..."></div>
+  <div id="status" class="hidden"></div>
+
+  <div class="body">
+    <div class="main">
+      <div id="messages">
+        <div class="notice">Messages are not saved. You only see messages sent after you joined.</div>
+      </div>
+      <button id="newMsgs" class="hidden">New messages ↓</button>
+      <form class="composer" id="composer">
+        <button type="button" class="round" id="emojiBtn" title="Emoji"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2"/><circle cx="9" cy="10" r=".9" fill="currentColor"/><circle cx="15" cy="10" r=".9" fill="currentColor"/></svg></button>
+        <textarea id="input" rows="1" maxlength="2000" placeholder="Type a message..."></textarea>
+        <button type="button" class="icon-btn" id="imgBtn" title="Send an image"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg></button>
+        <button type="button" class="icon-btn" id="gifBtn" title="Send a GIF"><span class="gif-btn">GIF</span></button>
+        <button type="submit" id="sendBtn">Send</button>
+        <input type="file" id="imgFile" accept="image/jpeg,image/png,image/webp" class="hidden">
+        <input type="file" id="gifFile" accept="image/gif" class="hidden">
+      </form>
+      <div id="emojiPop" class="pop hidden"></div>
+    </div>
+    <aside id="aside">
+      <h3>Online (<span id="onlineCount2">0</span>)</h3>
+      <div id="users"></div>
+    </aside>
+  </div>
+
+  <div id="menu" class="pop hidden"></div>
+</div>
+
+<div id="overlay" class="overlay hidden"><div class="dialog" id="dialog"></div></div>
+<div id="lightbox" class="overlay hidden"><img alt=""></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+(function () {
+  "use strict";
+  var ADMIN_NAME = __ADMIN_NAME_JSON__;
+  var MAX_GIF = 2 * 1024 * 1024;       // 2 MB
+  var MAX_IMG_SIDE = 1280;             // pixels
+  var COLORS = ["#22c55e","#8b5cf6","#f59e0b","#3b82f6","#ec4899","#14b8a6","#ef4444","#a855f7","#84cc16","#f97316","#06b6d4"];
+  var EMOJIS = ("😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😛 😜 🤪 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😫 😩 🥺 😢 😭 😤 😠 😡 🤯 😳 🥵 🥶 😱 😨 🤗 🤔 🤭 🤫 😶 😐 😑 😬 🙄 😯 😴 🤤 😵 🤐 🤢 🤮 🤧 😷 🤒 🤕 🤠 😈 👻 💀 🤖 👽 💩 " +
+    "👍 👎 👌 ✌️ 🤞 🤟 🤘 👏 🙌 👐 🤝 🙏 💪 👋 👉 👈 👆 👇 ✋ 🖐️ " +
+    "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 💯 💥 ✨ 🔥 ⭐ 🌟 ⚡ 🎉 🎊 🎁 🏆 🥇 ⚽ 🏀 🎮 🎵 🎶 🎤 🎬 📷 💡 📌 ✅ ❌ ⚠️ ❓ ❗ " +
+    "☕ 🍕 🍔 🍟 🍰 🎂 🍺 🍷 🥂 🌍 ☀️ 🌙 🌈 ☔ ❄️ 🌊 ⛵ 🚢 ⚓ ✈️ 🚀 🚗 🏠 🐶 🐱 🦁 🐯 🐻 🐼 🐸 🐵 🦄 🐝 🌹 🌻 🍀").split(" ");
+
+  var $ = function (id) { return document.getElementById(id); };
+  var room = (new URLSearchParams(location.search).get("room") || "main").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32) || "main";
+
+  var ws = null, me = null, myName = "", myPassword = "", users = {}, imagesOn = true;
+  var noReconnect = false, retry = 0, retryTimer = null, pingTimer = null, joined = false;
+  var cid = getCid();
+
+  // ---------- small helpers ----------
+  function getCid() {
+    try {
+      var c = localStorage.getItem("ac_cid");
+      if (!c) { c = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); localStorage.setItem("ac_cid", c); }
+      return c;
+    } catch (e) { return String(Math.random()).slice(2) + Date.now(); }
+  }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function colorFor(name) { var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return COLORS[h % COLORS.length]; }
+  function initial(name) { return Array.from(name.trim())[0].toUpperCase(); }
+  function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function isAdminName(n) { return n.trim().toLowerCase() === ADMIN_NAME.toLowerCase(); }
+  function avatar(user) {
+    var a = el("div", "avatar" + (user.admin ? " admin" : ""));
+    if (user.admin) { var i = el("img"); i.src = "/logo.png"; i.alt = ""; a.appendChild(i); }
+    else { a.style.background = colorFor(user.name); a.textContent = initial(user.name); }
+    return a;
+  }
+  function icon(path) { var d = document.createElement("div"); d.innerHTML = '<svg viewBox="0 0 24 24">' + path + "</svg>"; return d.firstChild; }
+  var ICON_TRASH = '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>';
+  var ICON_BAN = '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>';
+
+  var toastTimer;
+  function toast(text, bad) {
+    var t = $("toast"); t.textContent = text; t.className = bad ? "bad" : ""; clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = "hidden"; }, 3500);
+  }
+
+  // ---------- join ----------
+  $("nameInput").value = load("ac_name");
+  function updatePw() { $("pwInput").classList.toggle("hidden", !isAdminName($("nameInput").value)); }
+  $("nameInput").addEventListener("input", updatePw); updatePw();
+
+  $("joinForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var n = $("nameInput").value.replace(/\s+/g, " ").trim();
+    if (n.length < 2) { $("joinErr").textContent = "Your name needs at least 2 characters."; return; }
+    myName = n; myPassword = isAdminName(n) ? $("pwInput").value : "";
+    $("joinErr").textContent = ""; $("joinBtn").disabled = true; $("joinBtn").textContent = "Joining...";
+    noReconnect = false; connect();
+  });
+
+  function showJoin(msg) {
+    $("app").classList.add("hidden"); $("join").classList.remove("hidden");
+    $("joinBtn").disabled = false; $("joinBtn").textContent = "Join chat";
+    $("joinErr").textContent = msg || ""; joined = false;
+  }
+
+  // ---------- connection ----------
+  function connect() {
+    clearTimeout(retryTimer);
+    var proto = location.protocol === "https:" ? "wss://" : "ws://";
+    try { ws = new WebSocket(proto + location.host + "/ws?room=" + encodeURIComponent(room)); }
+    catch (e) { return scheduleRetry(); }
+    var sock = ws;
+    sock.onopen = function () {
+      sock.send(JSON.stringify({ type: "join", name: myName, password: myPassword, cid: cid }));
+    };
+    sock.onmessage = function (ev) {
+      if (ev.data === "pong") return;
+      var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      handle(d);
+    };
+    sock.onclose = function (ev) {
+      if (sock !== ws) return;
+      clearInterval(pingTimer);
+      if (ev.code === 4000) { noReconnect = true; setStatus("You opened Action Chat somewhere else with the same name. Reload to continue here."); return; }
+      if (noReconnect) return;
+      if (!joined) { showJoin("Could not connect. Please try again."); return; }
+      scheduleRetry();
+    };
+  }
+  function scheduleRetry() {
+    retry = Math.min(retry + 1, 5);
+    var wait = [1, 2, 4, 8, 15][retry - 1];
+    setStatus("Connection lost. Reconnecting in " + wait + "s...");
+    retryTimer = setTimeout(connect, wait * 1000);
+  }
+  function setStatus(text) { var s = $("status"); s.textContent = text || ""; s.classList.toggle("hidden", !text); }
+  function send(obj) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(obj)); return true; } toast("Not connected yet.", true); return false; }
+
+  // ---------- incoming ----------
+  function handle(d) {
+    switch (d.type) {
+      case "welcome":
+        me = d.you; imagesOn = d.imagesOn; retry = 0; setStatus("");
+        store("ac_name", myName);
+        users = {}; d.users.forEach(function (u) { users[u.id] = u; });
+        if (!joined) {
+          $("join").classList.add("hidden"); $("app").classList.remove("hidden");
+          $("input").focus();
+        } else {
+          sys("Reconnected.");
+        }
+        joined = true;
+        document.body.classList.toggle("is-admin", !!me.admin);
+        renderUsers(); updateImageButtons();
+        clearInterval(pingTimer);
+        pingTimer = setInterval(function () { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
+        break;
+      case "rejected":
+        noReconnect = true;
+        if (d.code === "blocked") { store("ac_blocked", "1"); }
+        if (joined) { showJoin(d.text); } else { showJoin(d.text); }
+        if (d.code === "badpass") { $("pwInput").value = ""; $("pwInput").focus(); }
+        break;
+      case "join": users[d.user.id] = d.user; renderUsers(); break;
+      case "leave": delete users[d.id]; renderUsers(); break;
+      case "msg": addMessage(d); break;
+      case "delete":
+        var m = document.querySelector('.msg[data-id="' + cssEsc(d.id) + '"]');
+        if (m) m.remove();
+        break;
+      case "purge":
+        document.querySelectorAll('.msg[data-user="' + cssEsc(d.userId) + '"]').forEach(function (n) { n.remove(); });
+        break;
+      case "clear":
+        document.querySelectorAll("#messages .msg, #messages .sys").forEach(function (n) { n.remove(); });
+        sys("The chat was cleared by the admin.");
+        break;
+      case "settings":
+        imagesOn = d.imagesOn; updateImageButtons();
+        sys(imagesOn ? "The admin turned images on." : "The admin turned images off.");
+        break;
+      case "blockedList": showBlockedList(d.list); break;
+      case "error": toast(d.text, true); break;
+      case "info": toast(d.text); break;
+    }
+  }
+  function cssEsc(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, ""); }
+
+  // ---------- messages ----------
+  var box = $("messages");
+  function nearBottom() { return box.scrollHeight - box.scrollTop - box.clientHeight < 120; }
+  function toBottom() { box.scrollTop = box.scrollHeight; $("newMsgs").classList.add("hidden"); }
+  box.addEventListener("scroll", function () { if (nearBottom()) $("newMsgs").classList.add("hidden"); });
+  $("newMsgs").onclick = toBottom;
+
+  function sys(text) {
+    var stick = nearBottom(); box.appendChild(el("div", "sys", text)); if (stick) toBottom();
+  }
+
+  function renderText(text) {
+    var frag = document.createDocumentFragment();
+    var parts = text.split("```");
+    parts.forEach(function (p, i) {
+      if (i % 2 === 1 && i < parts.length - 1) {
+        var pre = el("pre"); var code = el("code", null, p.replace(/^[a-zA-Z0-9]*\n/, "").replace(/\n$/, ""));
+        pre.appendChild(code); frag.appendChild(pre);
+      } else {
+        frag.appendChild(document.createTextNode(i % 2 === 1 ? "```" + p : p.replace(/^\n|\n$/g, "")));
+      }
+    });
+    return frag;
+  }
+
+  function addMessage(d) {
+    var stick = nearBottom() || (me && d.from.id === me.id);
+    var row = el("div", "msg"); row.dataset.id = d.id; row.dataset.user = d.from.id;
+    row.dataset.search = (d.from.name + " " + (d.text || "")).toLowerCase();
+    row.appendChild(avatar(d.from));
+    var c = el("div", "content");
+    var meta = el("div", "meta");
+    meta.appendChild(el("span", "name" + (d.from.admin ? " admin" : ""), d.from.name));
+    if (d.from.admin) meta.appendChild(el("span", "badge", "ADMIN"));
+    meta.appendChild(el("span", "time", fmtTime(d.ts)));
+    c.appendChild(meta);
+    if (d.text) { var t = el("div", "text"); t.appendChild(renderText(d.text)); c.appendChild(t); }
+    if (d.kind === "image" && d.image) {
+      var pic = el("div", "pic"); var img = el("img"); img.alt = "Image from " + d.from.name; img.src = d.image;
+      img.onload = function () { if (stick) toBottom(); };
+      img.onclick = function () { var lb = $("lightbox"); lb.querySelector("img").src = d.image; lb.classList.remove("hidden"); };
+      pic.appendChild(img);
+      if (d.image.indexOf("data:image/gif") === 0) pic.appendChild(el("span", "gif-tag", "GIF"));
+      c.appendChild(pic);
+    }
+    row.appendChild(c);
+
+    // Admin tools (only visible to the admin through CSS)
+    if (me && me.admin) {
+      var tools = el("div", "tools");
+      var del = el("button"); del.title = "Delete message"; del.appendChild(icon(ICON_TRASH));
+      del.onclick = function () { send({ type: "delete", id: d.id }); };
+      tools.appendChild(del);
+      if (!d.from.admin) {
+        var ban = el("button"); ban.title = "Block " + d.from.name; ban.appendChild(icon(ICON_BAN));
+        ban.onclick = function () { askBlock(d.from); };
+        tools.appendChild(ban);
+      }
+      row.appendChild(tools);
+    }
+
+    applySearch(row);
+    box.appendChild(row);
+    // keep the page light: at most 300 messages on screen
+    var all = box.querySelectorAll(".msg, .sys"); if (all.length > 300) all[0].remove();
+    if (stick) toBottom(); else $("newMsgs").classList.remove("hidden");
+  }
+
+  // ---------- online list ----------
+  function renderUsers() {
+    var list = Object.keys(users).map(function (k) { return users[k]; });
+    list.sort(function (a, b) { return (b.admin - a.admin) || a.name.localeCompare(b.name); });
+    $("onlineCount").textContent = list.length; $("onlineCount2").textContent = list.length;
+    var wrap = $("users"); wrap.textContent = "";
+    list.forEach(function (u) {
+      var r = el("div", "user"); r.appendChild(avatar(u));
+      var n = el("span", "uname", u.name); r.appendChild(n);
+      if (me && u.id === me.id) r.appendChild(el("span", "you", "you"));
+      else if (me && me.admin && !u.admin) {
+        var b = el("button", "ban"); b.title = "Block " + u.name; b.appendChild(icon(ICON_BAN));
+        b.onclick = function () { askBlock(u); }; r.appendChild(b);
+      }
+      wrap.appendChild(r);
+    });
+  }
+  $("onlineBtn").onclick = function () { $("aside").classList.toggle("open"); };
+
+  // ---------- sending ----------
+  var input = $("input");
+  function autosize() { input.style.height = "40px"; input.style.height = Math.min(input.scrollHeight + 2, 120) + "px"; }
+  input.addEventListener("input", autosize);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendText(); }
+  });
+  $("composer").addEventListener("submit", function (e) { e.preventDefault(); sendText(); });
+  function sendText() {
+    var text = input.value.trim(); if (!text) return;
+    if (send({ type: "msg", kind: "text", text: text })) { input.value = ""; autosize(); }
+    input.focus();
+  }
+
+  // Images: shrink in the browser before sending, to keep things fast and free.
+  function updateImageButtons() {
+    var allowed = imagesOn || (me && me.admin);
+    ["imgBtn", "gifBtn"].forEach(function (id) { $(id).style.opacity = allowed ? 1 : .35; $(id).title = allowed ? (id === "imgBtn" ? "Send an image" : "Send a GIF") : "Images are turned off"; });
+  }
+  function imagesAllowed() { if (imagesOn || (me && me.admin)) return true; toast("Images are turned off by the admin.", true); return false; }
+  $("imgBtn").onclick = function () { if (imagesAllowed()) $("imgFile").click(); };
+  $("gifBtn").onclick = function () { if (imagesAllowed()) $("gifFile").click(); };
+  $("imgFile").onchange = function () { var f = this.files[0]; this.value = ""; if (f) sendFile(f); };
+  $("gifFile").onchange = function () { var f = this.files[0]; this.value = ""; if (f) sendFile(f); };
+  input.addEventListener("paste", function (e) {
+    var items = (e.clipboardData && e.clipboardData.files) || [];
+    if (items.length && /^image\//.test(items[0].type)) { e.preventDefault(); if (imagesAllowed()) sendFile(items[0]); }
+  });
+
+  function sendFile(file) {
+    var caption = input.value.trim().slice(0, 300);
+    if (file.type === "image/gif") {
+      if (file.size > MAX_GIF) { toast("GIF is too large. The limit is 2 MB.", true); return; }
+      var r = new FileReader();
+      r.onload = function () { if (send({ type: "msg", kind: "image", image: r.result, text: caption })) { input.value = ""; autosize(); } };
+      r.readAsDataURL(file); return;
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast("Please choose a JPG, PNG, WebP or GIF image.", true); return; }
+    var url = URL.createObjectURL(file); var img = new Image();
+    img.onload = function () {
+      var s = Math.min(1, MAX_IMG_SIDE / Math.max(img.width, img.height));
+      var w = Math.round(img.width * s), h = Math.round(img.height * s);
+      var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      var cx = cv.getContext("2d"); cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      var q = 0.82, data = cv.toDataURL("image/jpeg", q);
+      while (data.length > 900000 && q > 0.4) { q -= 0.12; data = cv.toDataURL("image/jpeg", q); }
+      if (send({ type: "msg", kind: "image", image: data, text: caption })) { input.value = ""; autosize(); }
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast("That image could not be read.", true); };
+    img.src = url;
+  }
+
+  // ---------- emoji ----------
+  var pop = $("emojiPop");
+  EMOJIS.forEach(function (em) {
+    if (!em) return;
+    var b = el("button", null, em); b.type = "button";
+    b.onclick = function () {
+      var s = input.selectionStart || input.value.length, e = input.selectionEnd || s;
+      input.value = input.value.slice(0, s) + em + input.value.slice(e);
+      input.focus(); input.selectionStart = input.selectionEnd = s + em.length; autosize();
+    };
+    pop.appendChild(b);
+  });
+  $("emojiBtn").onclick = function (e) { e.stopPropagation(); pop.classList.toggle("hidden"); $("menu").classList.add("hidden"); };
+
+  // ---------- search ----------
+  $("searchBtn").onclick = function () {
+    var bar = $("searchBar"); bar.classList.toggle("hidden"); this.classList.toggle("on", !bar.classList.contains("hidden"));
+    if (bar.classList.contains("hidden")) { $("searchInput").value = ""; runSearch(); } else $("searchInput").focus();
+  };
+  $("searchInput").addEventListener("input", runSearch);
+  function applySearch(row) { var q = $("searchInput").value.trim().toLowerCase(); row.classList.toggle("hidden", !!q && row.dataset.search.indexOf(q) < 0); }
+  function runSearch() { box.querySelectorAll(".msg").forEach(applySearch); }
+
+  // ---------- menu ----------
+  $("menuBtn").onclick = function (e) {
+    e.stopPropagation(); pop.classList.add("hidden");
+    var m = $("menu"); m.textContent = "";
+    function item(text, fn, cls) { var b = el("button", cls || null, text); b.onclick = function () { m.classList.add("hidden"); fn(); }; m.appendChild(b); }
+    if (me && me.admin) {
+      m.appendChild(el("div", "label", "Admin"));
+      item(imagesOn ? "Turn images off" : "Turn images on", function () { send({ type: "images", on: !imagesOn }); });
+      item("Blocked users", function () { send({ type: "listBlocked" }); });
+      item("Clear chat for everyone", function () {
+        confirmDialog("Clear the chat?", "This removes all messages from everyone's screen.", "Clear", function () { send({ type: "clear" }); });
+      }, "danger");
+      m.appendChild(el("hr"));
+    }
+    item("Leave chat", function () { noReconnect = true; if (ws) ws.close(1000); showJoin(""); });
+    m.classList.toggle("hidden");
+  };
+  document.addEventListener("click", function (e) {
+    if (!pop.contains(e.target) && e.target !== $("emojiBtn")) pop.classList.add("hidden");
+    if (!$("menu").contains(e.target)) $("menu").classList.add("hidden");
+  });
+
+  // ---------- dialogs ----------
+  function openDialog(build) { var d = $("dialog"); d.textContent = ""; build(d); $("overlay").classList.remove("hidden"); }
+  function closeDialog() { $("overlay").classList.add("hidden"); }
+  $("overlay").addEventListener("click", function (e) { if (e.target === this) closeDialog(); });
+  $("lightbox").onclick = function () { this.classList.add("hidden"); };
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closeDialog(); $("lightbox").classList.add("hidden"); } });
+
+  function buttons(d, okText, okFn) {
+    var row = el("div", "row");
+    var c = el("button", "btn2", "Cancel"); c.onclick = closeDialog;
+    var ok = el("button", "btn-red", okText); ok.onclick = function () { closeDialog(); okFn(); };
+    row.appendChild(c); row.appendChild(ok); d.appendChild(row);
+  }
+  function confirmDialog(title, text, okText, fn) {
+    openDialog(function (d) { d.appendChild(el("h4", null, title)); d.appendChild(el("div", null, text)); buttons(d, okText, fn); });
+  }
+  function checkbox(d, text, hint, checked) {
+    var l = el("label"); var c = el("input"); c.type = "checkbox"; c.checked = checked;
+    var s = el("span", null, text); if (hint) s.appendChild(el("small", null, hint));
+    l.appendChild(c); l.appendChild(s); d.appendChild(l); return c;
+  }
+  function askBlock(user) {
+    openDialog(function (d) {
+      d.appendChild(el("h4", null, "Block " + user.name + "?"));
+      var purge = checkbox(d, "Remove their messages", "Deletes everything they wrote from all screens.", true);
+      var net = checkbox(d, "Also block their internet connection",
+        "Stronger, but may also block other people on the same Wi-Fi or office network.", false);
+      buttons(d, "Block", function () { send({ type: "block", userId: user.id, purge: purge.checked, byNetwork: net.checked }); });
+    });
+  }
+  function showBlockedList(list) {
+    openDialog(function (d) {
+      d.appendChild(el("h4", null, "Blocked users (" + list.length + ")"));
+      var wrap = el("div", "blist");
+      if (!list.length) wrap.appendChild(el("div", "sys", "Nobody is blocked."));
+      list.slice().reverse().forEach(function (b) {
+        var r = el("div", "bitem"); var info = el("div", null, b.name);
+        info.appendChild(el("small", null, new Date(b.at).toLocaleString() + (b.network ? " · device + network" : " · device")));
+        var u = el("button", "btn2", "Unblock"); u.onclick = function () { send({ type: "unblock", bid: b.bid }); };
+        r.appendChild(info); r.appendChild(u); wrap.appendChild(r);
+      });
+      d.appendChild(wrap);
+      var row = el("div", "row"); var c = el("button", "btn2", "Close"); c.onclick = closeDialog; row.appendChild(c); d.appendChild(row);
+    });
+  }
+})();
+</script>
+</body>
+</html>
