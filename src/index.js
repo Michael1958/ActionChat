@@ -23,7 +23,7 @@ const LOCKOUT_MS = 10 * 60 * 1000;  // lockout length
 const SALT = "action-chat-v1";      // used to scramble IP addresses before storing
 
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏"];
-const AVATARS = ["🦁", "🐯", "🐺", "🦊", "🐻", "🐼", "🐨", "🐸", "🐵", "🦄", "🐙", "🦅", "🐬", "🚀", "⚡", "🔥", "⭐", "🎮", "⚽", "🎸"];
+const AVATARS = ["👶", "🧒", "👧", "👦", "🧑", "👩", "👨", "👱‍♀️", "👱", "👩‍🦰", "👨‍🦰", "👩‍🦱", "👨‍🦱", "👩‍🦳", "👨‍🦳", "👩‍🦲", "👨‍🦲", "🧔", "🧓", "👵", "👴", "👮", "🕵️", "💂", "👷", "🤴", "👸", "🤵", "👰", "🧑‍⚕️", "🧑‍🎓", "🧑‍🏫", "🧑‍🍳", "🧑‍🌾", "🧑‍🔧", "🧑‍💻", "🧑‍🎤", "🧑‍🎨", "🧑‍✈️", "🧑‍🚀", "🧑‍🚒", "🥷", "🦸", "🦹", "🧙", "🧚", "🧛", "🧜", "🧝", "🧞", "🧟", "🎅", "🤶", "🤠", "🦁", "🐯", "🐺", "🦊", "🐻", "🐼", "🐨", "🐸", "🐵", "🦄", "🐙", "🦅", "🐬", "🚀", "⚡", "🔥", "⭐", "🎮", "⚽", "🎸"];
 const EIGHT_BALL = [
   "It is certain.", "It is decidedly so.", "Without a doubt.", "Yes, definitely.", "You may rely on it.",
   "As I see it, yes.", "Most likely.", "Outlook good.", "Yes.", "Signs point to yes.",
