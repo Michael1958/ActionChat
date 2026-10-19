@@ -1,4 +1,4 @@
-// Action Chat v2.0.0 - real-time group chat for Cloudflare Workers (free plan).
+// Action Chat v2.1.0 - real-time group chat for Cloudflare Workers (free plan).
 // Developed by Michael Gerontides.
 // Chat messages live only in memory and are never written to disk.
 // Stored (small, no chat text): blocked users, images on/off, current poll, trivia game, pinned announcement.
@@ -7,7 +7,7 @@ import { DurableObject } from "cloudflare:workers";
 import PAGE_HTML from "./page.html";
 import LOGO_PNG from "./logo.png";
 
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.1.0";
 
 // ---- Limits (tuned to stay well inside the free plan) ----
 const MAX_FRAME = 3_000_000;        // largest incoming message (about 2 MB image after encoding)
@@ -23,6 +23,7 @@ const LOCKOUT_MS = 10 * 60 * 1000;  // lockout length
 const SALT = "action-chat-v1";      // used to scramble IP addresses before storing
 
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏"];
+// Must match the AVATARS list in page.html exactly.
 const AVATARS = ["👶", "🧒", "👧", "👦", "🧑", "👩", "👨", "👱‍♀️", "👱", "👩‍🦰", "👨‍🦰", "👩‍🦱", "👨‍🦱", "👩‍🦳", "👨‍🦳", "👩‍🦲", "👨‍🦲", "🧔", "🧓", "👵", "👴", "👮", "🕵️", "💂", "👷", "🤴", "👸", "🤵", "👰", "🧑‍⚕️", "🧑‍🎓", "🧑‍🏫", "🧑‍🍳", "🧑‍🌾", "🧑‍🔧", "🧑‍💻", "🧑‍🎤", "🧑‍🎨", "🧑‍✈️", "🧑‍🚀", "🧑‍🚒", "🥷", "🦸", "🦹", "🧙", "🧚", "🧛", "🧜", "🧝", "🧞", "🧟", "🎅", "🤶", "🤠", "🦁", "🐯", "🐺", "🦊", "🐻", "🐼", "🐨", "🐸", "🐵", "🦄", "🐙", "🦅", "🐬", "🚀", "⚡", "🔥", "⭐", "🎮", "⚽", "🎸"];
 const EIGHT_BALL = [
   "It is certain.", "It is decidedly so.", "Without a doubt.", "Yes, definitely.", "You may rely on it.",
@@ -265,7 +266,6 @@ export class ChatRoom extends DurableObject {
       if (text.startsWith("//")) text = text.slice(1);          // "//text" sends a literal slash
       else if (text.startsWith("/")) return this.handleCommand(ws, me, text, now);
       out = { type: "msg", id: shortId(), ts: now, from, kind: "text", text, replyTo };
-      this.rate.set(me.id, r);
       this.broadcast(out);
       return this.checkTrivia(me, text);
     }
