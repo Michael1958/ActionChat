@@ -10,7 +10,6 @@
     --bg: #0d1016; --panel: #11151d; --panel2: #161b25; --line: #222936;
     --text: #e7eaf0; --muted: #8a94a6; --accent: #2f7ff7; --accent2: #1f6ae0;
     --green: #22c55e; --red: #ef4444; --gold: #d4af37; --code: #0a0d13;
-    --radius: 10px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
@@ -43,7 +42,7 @@
   header img { width: 36px; height: 36px; }
   header h2 { margin: 0; font-size: 19px; font-weight: 600; white-space: nowrap; }
   .spacer { flex: 1; }
-  .online-pill { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 20px; color: var(--text); font-size: 14px; }
+  .online-pill { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 20px; font-size: 14px; }
   .online-pill:hover { background: var(--panel2); }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
   .sep { width: 1px; height: 24px; background: var(--line); }
@@ -57,8 +56,8 @@
   #status { padding: 6px 14px; font-size: 13px; text-align: center; background: #3a2a0a; color: #ffd48a; }
 
   .body { flex: 1; display: flex; min-height: 0; position: relative; }
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  #messages { flex: 1; overflow-y: auto; padding: 14px 6px 8px 14px; scroll-behavior: auto; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+  #messages { flex: 1; overflow-y: auto; padding: 14px 6px 8px 14px; }
   .notice { text-align: center; color: var(--muted); font-size: 12.5px; margin: 4px 0 14px; }
 
   .msg { display: flex; gap: 12px; padding: 6px 8px; border-radius: 8px; position: relative; }
@@ -87,7 +86,7 @@
   .tools svg { width: 17px; height: 17px; }
   .sys { text-align: center; color: var(--muted); font-size: 12.5px; padding: 4px; }
 
-  #newMsgs { position: absolute; left: 50%; transform: translateX(-50%); bottom: 78px; background: var(--accent); color: #fff;
+  #newMsgs { position: absolute; left: 50%; transform: translateX(-50%); bottom: 72px; background: var(--accent); color: #fff;
     padding: 6px 14px; border-radius: 20px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
 
   /* ---------- Composer ---------- */
@@ -107,7 +106,7 @@
   aside { width: 230px; flex: 0 0 230px; border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; }
   aside h3 { margin: 0; padding: 14px 16px 8px; font-size: 15px; font-weight: 600; }
   #users { overflow-y: auto; padding: 0 8px 12px; flex: 1; }
-  .user { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font-size: 14px; position: relative; }
+  .user { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font-size: 14px; }
   .user:hover { background: var(--panel2); }
   .user .avatar { width: 24px; height: 24px; flex-basis: 24px; font-size: 11.5px; }
   .user .avatar.admin img { width: 20px; height: 20px; }
@@ -124,6 +123,23 @@
     display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
   #emojiPop button { font-size: 22px; height: 36px; border-radius: 6px; }
   #emojiPop button:hover { background: rgba(255,255,255,.08); }
+
+  /* GIF picker */
+  #gifPop { right: 14px; bottom: 64px; width: 360px; max-width: calc(100% - 28px); height: 420px; max-height: calc(100% - 80px);
+    display: flex; flex-direction: column; overflow: hidden; }
+  .gif-head { padding: 10px; border-bottom: 1px solid var(--line); }
+  .gif-head input { width: 100%; padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; outline: none; }
+  .gif-head input:focus { border-color: var(--accent); }
+  #gifGrid { flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+  #gifGrid button { position: relative; padding: 0; border-radius: 6px; overflow: hidden; background: #0a0d13; height: 110px; }
+  #gifGrid button img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #gifGrid button:hover { outline: 2px solid var(--accent); }
+  .gif-msg { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 13px; padding: 24px 10px; }
+  .gif-foot { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .gif-foot b { color: var(--text); letter-spacing: .5px; }
+  .gif-foot button { color: var(--accent); font-size: 12.5px; padding: 4px 6px; border-radius: 6px; }
+  .gif-foot button:hover { background: rgba(47,127,247,.12); }
+
   #menu { right: 10px; top: 52px; min-width: 220px; padding: 6px; }
   #menu button { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 6px; font-size: 14px; }
   #menu button:hover { background: rgba(255,255,255,.06); }
@@ -157,6 +173,7 @@
     .composer { gap: 6px; padding: 8px; }
     .composer .round, #imgBtn, #gifBtn { width: 36px; height: 36px; flex-basis: 36px; }
     #sendBtn { padding: 0 14px; }
+    #gifPop { left: 8px; right: 8px; width: auto; max-width: none; bottom: 58px; }
     .is-admin .msg .tools { display: flex; position: static; float: right; }
     .is-admin .user .ban { display: grid; }
   }
@@ -201,12 +218,17 @@
         <button type="button" class="round" id="emojiBtn" title="Emoji"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2"/><circle cx="9" cy="10" r=".9" fill="currentColor"/><circle cx="15" cy="10" r=".9" fill="currentColor"/></svg></button>
         <textarea id="input" rows="1" maxlength="2000" placeholder="Type a message..."></textarea>
         <button type="button" class="icon-btn" id="imgBtn" title="Send an image"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg></button>
-        <button type="button" class="icon-btn" id="gifBtn" title="Send a GIF"><span class="gif-btn">GIF</span></button>
+        <button type="button" class="icon-btn" id="gifBtn" title="Search GIFs"><span class="gif-btn">GIF</span></button>
         <button type="submit" id="sendBtn">Send</button>
         <input type="file" id="imgFile" accept="image/jpeg,image/png,image/webp" class="hidden">
         <input type="file" id="gifFile" accept="image/gif" class="hidden">
       </form>
       <div id="emojiPop" class="pop hidden"></div>
+      <div id="gifPop" class="pop hidden">
+        <div class="gif-head"><input id="gifSearch" placeholder="Search GIFs..." autocomplete="off"></div>
+        <div id="gifGrid"></div>
+        <div class="gif-foot"><span>Powered by <b>KLIPY</b></span><button type="button" id="gifUpload">Upload GIF from device</button></div>
+      </div>
     </div>
     <aside id="aside">
       <h3>Online (<span id="onlineCount2">0</span>)</h3>
@@ -225,7 +247,10 @@
 (function () {
   "use strict";
   var ADMIN_NAME = __ADMIN_NAME_JSON__;
-  var MAX_GIF = 2 * 1024 * 1024;       // 2 MB
+  var KLIPY_KEY = __KLIPY_KEY_JSON__;
+  var KLIPY_API = "https://api.klipy.com/api/v1/";
+  var GIF_FILTER = "high";            // safe search level for GIF results (public chat)
+  var MAX_GIF = 2 * 1024 * 1024;       // 2 MB, for GIFs uploaded from the device
   var MAX_IMG_SIDE = 1280;             // pixels
   var COLORS = ["#22c55e","#8b5cf6","#f59e0b","#3b82f6","#ec4899","#14b8a6","#ef4444","#a855f7","#84cc16","#f97316","#06b6d4"];
   var EMOJIS = ("😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😛 😜 🤪 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😫 😩 🥺 😢 😭 😤 😠 😡 🤯 😳 🥵 🥶 😱 😨 🤗 🤔 🤭 🤫 😶 😐 😑 😬 🙄 😯 😴 🤤 😵 🤐 🤢 🤮 🤧 😷 🤒 🤕 🤠 😈 👻 💀 🤖 👽 💩 " +
@@ -331,12 +356,8 @@
         me = d.you; imagesOn = d.imagesOn; retry = 0; setStatus("");
         store("ac_name", myName);
         users = {}; d.users.forEach(function (u) { users[u.id] = u; });
-        if (!joined) {
-          $("join").classList.add("hidden"); $("app").classList.remove("hidden");
-          $("input").focus();
-        } else {
-          sys("Reconnected.");
-        }
+        if (!joined) { $("join").classList.add("hidden"); $("app").classList.remove("hidden"); $("input").focus(); }
+        else sys("Reconnected.");
         joined = true;
         document.body.classList.toggle("is-admin", !!me.admin);
         renderUsers(); updateImageButtons();
@@ -345,8 +366,7 @@
         break;
       case "rejected":
         noReconnect = true;
-        if (d.code === "blocked") { store("ac_blocked", "1"); }
-        if (joined) { showJoin(d.text); } else { showJoin(d.text); }
+        showJoin(d.text);
         if (d.code === "badpass") { $("pwInput").value = ""; $("pwInput").focus(); }
         break;
       case "join": users[d.user.id] = d.user; renderUsers(); break;
@@ -365,7 +385,7 @@
         break;
       case "settings":
         imagesOn = d.imagesOn; updateImageButtons();
-        sys(imagesOn ? "The admin turned images on." : "The admin turned images off.");
+        sys(imagesOn ? "The admin turned images and GIFs on." : "The admin turned images and GIFs off.");
         break;
       case "blockedList": showBlockedList(d.list); break;
       case "error": toast(d.text, true); break;
@@ -381,9 +401,7 @@
   box.addEventListener("scroll", function () { if (nearBottom()) $("newMsgs").classList.add("hidden"); });
   $("newMsgs").onclick = toBottom;
 
-  function sys(text) {
-    var stick = nearBottom(); box.appendChild(el("div", "sys", text)); if (stick) toBottom();
-  }
+  function sys(text) { var stick = nearBottom(); box.appendChild(el("div", "sys", text)); if (stick) toBottom(); }
 
   function renderText(text) {
     var frag = document.createDocumentFragment();
@@ -411,17 +429,18 @@
     meta.appendChild(el("span", "time", fmtTime(d.ts)));
     c.appendChild(meta);
     if (d.text) { var t = el("div", "text"); t.appendChild(renderText(d.text)); c.appendChild(t); }
-    if (d.kind === "image" && d.image) {
-      var pic = el("div", "pic"); var img = el("img"); img.alt = "Image from " + d.from.name; img.src = d.image;
+    var src = d.kind === "image" ? d.image : (d.kind === "gif" ? d.url : "");
+    if (src) {
+      var pic = el("div", "pic"); var img = el("img"); img.alt = "Image from " + d.from.name; img.src = src;
       img.onload = function () { if (stick) toBottom(); };
-      img.onclick = function () { var lb = $("lightbox"); lb.querySelector("img").src = d.image; lb.classList.remove("hidden"); };
+      img.onerror = function () { pic.replaceWith(el("div", "sys", "(GIF could not be loaded)")); };
+      img.onclick = function () { var lb = $("lightbox"); lb.querySelector("img").src = src; lb.classList.remove("hidden"); };
       pic.appendChild(img);
-      if (d.image.indexOf("data:image/gif") === 0) pic.appendChild(el("span", "gif-tag", "GIF"));
+      if (d.kind === "gif" || src.indexOf("data:image/gif") === 0) pic.appendChild(el("span", "gif-tag", "GIF"));
       c.appendChild(pic);
     }
     row.appendChild(c);
 
-    // Admin tools (only visible to the admin through CSS)
     if (me && me.admin) {
       var tools = el("div", "tools");
       var del = el("button"); del.title = "Delete message"; del.appendChild(icon(ICON_TRASH));
@@ -437,7 +456,6 @@
 
     applySearch(row);
     box.appendChild(row);
-    // keep the page light: at most 300 messages on screen
     var all = box.querySelectorAll(".msg, .sys"); if (all.length > 300) all[0].remove();
     if (stick) toBottom(); else $("newMsgs").classList.remove("hidden");
   }
@@ -450,7 +468,7 @@
     var wrap = $("users"); wrap.textContent = "";
     list.forEach(function (u) {
       var r = el("div", "user"); r.appendChild(avatar(u));
-      var n = el("span", "uname", u.name); r.appendChild(n);
+      r.appendChild(el("span", "uname", u.name));
       if (me && u.id === me.id) r.appendChild(el("span", "you", "you"));
       else if (me && me.admin && !u.admin) {
         var b = el("button", "ban"); b.title = "Block " + u.name; b.appendChild(icon(ICON_BAN));
@@ -475,14 +493,16 @@
     input.focus();
   }
 
-  // Images: shrink in the browser before sending, to keep things fast and free.
   function updateImageButtons() {
     var allowed = imagesOn || (me && me.admin);
-    ["imgBtn", "gifBtn"].forEach(function (id) { $(id).style.opacity = allowed ? 1 : .35; $(id).title = allowed ? (id === "imgBtn" ? "Send an image" : "Send a GIF") : "Images are turned off"; });
+    ["imgBtn", "gifBtn"].forEach(function (id) {
+      $(id).style.opacity = allowed ? 1 : .35;
+      $(id).title = allowed ? (id === "imgBtn" ? "Send an image" : "Search GIFs") : "Images and GIFs are turned off";
+    });
+    if (!allowed) $("gifPop").classList.add("hidden");
   }
-  function imagesAllowed() { if (imagesOn || (me && me.admin)) return true; toast("Images are turned off by the admin.", true); return false; }
+  function imagesAllowed() { if (imagesOn || (me && me.admin)) return true; toast("Images and GIFs are turned off by the admin.", true); return false; }
   $("imgBtn").onclick = function () { if (imagesAllowed()) $("imgFile").click(); };
-  $("gifBtn").onclick = function () { if (imagesAllowed()) $("gifFile").click(); };
   $("imgFile").onchange = function () { var f = this.files[0]; this.value = ""; if (f) sendFile(f); };
   $("gifFile").onchange = function () { var f = this.files[0]; this.value = ""; if (f) sendFile(f); };
   input.addEventListener("paste", function (e) {
@@ -514,6 +534,102 @@
     img.src = url;
   }
 
+  // ---------- GIF picker (KLIPY library) ----------
+  // Requests go straight from the user's browser to KLIPY, as KLIPY's rules require.
+  var gifPop = $("gifPop"), gifGrid = $("gifGrid"), gifSearch = $("gifSearch");
+  var gifCache = {}, gifTimer = null, gifQuery = null, gifPage = 1, gifHasNext = false, gifLoading = false, gifReq = 0;
+
+  function pick(o, paths) {
+    for (var i = 0; i < paths.length; i++) {
+      var v = o, p = paths[i].split(".");
+      for (var j = 0; j < p.length && v != null; j++) v = v[p[j]];
+      if (typeof v === "string" && v) return v;
+    }
+    return "";
+  }
+  function parseGifs(json) {
+    var d = json && json.data;
+    var list = (d && Array.isArray(d.data)) ? d.data : (Array.isArray(d) ? d : (json && Array.isArray(json.results) ? json.results : []));
+    var out = [];
+    list.forEach(function (it) {
+      if (!it || it.type === "ad") return; // no ad items are requested; skip any defensively
+      var full = pick(it, ["file.md.gif.url", "file.hd.gif.url", "file.sm.gif.url", "media_formats.gif.url", "media_formats.mediumgif.url"]);
+      var thumb = pick(it, ["file.sm.gif.url", "file.xs.gif.url", "file.sm.webp.url", "media_formats.tinygif.url", "media_formats.nanogif.url"]) || full;
+      if (full) out.push({ full: full, thumb: thumb, title: it.title || it.content_description || "GIF" });
+    });
+    var hasNext = !!(d && (d.has_next || (d.current_page && d.last_page && d.current_page < d.last_page)));
+    return { items: out, hasNext: hasNext };
+  }
+  function gifMessage(text) { gifGrid.textContent = ""; gifGrid.appendChild(el("div", "gif-msg", text)); }
+
+  function loadGifs(q, page) {
+    if (!KLIPY_KEY) { gifMessage("GIF search is not set up yet. You can still upload a GIF from your device."); return; }
+    var key = (q || "#trending") + "|" + page;
+    var reqId = ++gifReq;
+    var done = function (res) {
+      if (reqId !== gifReq) return;
+      gifLoading = false; gifHasNext = res.hasNext;
+      if (page === 1) gifGrid.textContent = "";
+      if (!res.items.length && page === 1) { gifMessage(q ? "No GIFs found for \"" + q + "\"." : "No GIFs available right now."); return; }
+      res.items.forEach(function (g) {
+        var b = el("button"); b.type = "button"; b.title = g.title;
+        var im = el("img"); im.src = g.thumb; im.alt = g.title; im.loading = "lazy";
+        im.onerror = function () { b.remove(); };
+        b.appendChild(im);
+        b.onclick = function () { sendGif(g.full); };
+        gifGrid.appendChild(b);
+      });
+    };
+    if (gifCache[key]) return done(gifCache[key]);
+    gifLoading = true;
+    if (page === 1) gifMessage("Loading...");
+    var url = KLIPY_API + encodeURIComponent(KLIPY_KEY) + "/gifs/" + (q ? "search" : "trending") +
+      "?page=" + page + "&per_page=24&customer_id=" + encodeURIComponent(cid) + "&content_filter=" + GIF_FILTER +
+      (q ? "&q=" + encodeURIComponent(q) : "");
+    fetch(url).then(function (r) {
+      if (r.status === 429) throw new Error("limit");
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    }).then(function (j) {
+      var res = parseGifs(j); gifCache[key] = res; done(res);
+    }).catch(function (e) {
+      if (reqId !== gifReq) return;
+      gifLoading = false;
+      gifMessage(e && e.message === "limit" ? "GIF search is busy right now. Please try again in a few minutes." : "GIF search is unavailable right now. You can still upload a GIF from your device.");
+    });
+  }
+  function openGifs() {
+    if (!imagesAllowed()) return;
+    $("emojiPop").classList.add("hidden");
+    var opening = gifPop.classList.contains("hidden");
+    gifPop.classList.toggle("hidden");
+    if (opening) {
+      if (gifQuery === null) { gifQuery = ""; gifPage = 1; loadGifs("", 1); }
+      gifSearch.focus();
+    }
+  }
+  $("gifBtn").onclick = function (e) { e.stopPropagation(); openGifs(); };
+  gifSearch.addEventListener("input", function () {
+    clearTimeout(gifTimer);
+    gifTimer = setTimeout(function () {
+      var q = gifSearch.value.trim().slice(0, 50);
+      if (q === gifQuery) return;
+      gifQuery = q; gifPage = 1; gifGrid.scrollTop = 0; loadGifs(q, 1);
+    }, 600); // wait until the user stops typing, to save requests
+  });
+  gifSearch.addEventListener("keydown", function (e) { if (e.key === "Enter") e.preventDefault(); });
+  gifGrid.addEventListener("scroll", function () {
+    if (gifLoading || !gifHasNext) return;
+    if (gifGrid.scrollHeight - gifGrid.scrollTop - gifGrid.clientHeight < 80) { gifPage++; loadGifs(gifQuery, gifPage); }
+  });
+  $("gifUpload").onclick = function () { $("gifFile").click(); };
+  function sendGif(url) {
+    var caption = input.value.trim().slice(0, 300);
+    if (send({ type: "msg", kind: "gif", url: url, text: caption })) {
+      input.value = ""; autosize(); gifPop.classList.add("hidden"); input.focus();
+    }
+  }
+
   // ---------- emoji ----------
   var pop = $("emojiPop");
   EMOJIS.forEach(function (em) {
@@ -526,7 +642,7 @@
     };
     pop.appendChild(b);
   });
-  $("emojiBtn").onclick = function (e) { e.stopPropagation(); pop.classList.toggle("hidden"); $("menu").classList.add("hidden"); };
+  $("emojiBtn").onclick = function (e) { e.stopPropagation(); gifPop.classList.add("hidden"); pop.classList.toggle("hidden"); $("menu").classList.add("hidden"); };
 
   // ---------- search ----------
   $("searchBtn").onclick = function () {
@@ -539,12 +655,12 @@
 
   // ---------- menu ----------
   $("menuBtn").onclick = function (e) {
-    e.stopPropagation(); pop.classList.add("hidden");
+    e.stopPropagation(); pop.classList.add("hidden"); gifPop.classList.add("hidden");
     var m = $("menu"); m.textContent = "";
     function item(text, fn, cls) { var b = el("button", cls || null, text); b.onclick = function () { m.classList.add("hidden"); fn(); }; m.appendChild(b); }
     if (me && me.admin) {
       m.appendChild(el("div", "label", "Admin"));
-      item(imagesOn ? "Turn images off" : "Turn images on", function () { send({ type: "images", on: !imagesOn }); });
+      item(imagesOn ? "Turn images and GIFs off" : "Turn images and GIFs on", function () { send({ type: "images", on: !imagesOn }); });
       item("Blocked users", function () { send({ type: "listBlocked" }); });
       item("Clear chat for everyone", function () {
         confirmDialog("Clear the chat?", "This removes all messages from everyone's screen.", "Clear", function () { send({ type: "clear" }); });
@@ -556,6 +672,7 @@
   };
   document.addEventListener("click", function (e) {
     if (!pop.contains(e.target) && e.target !== $("emojiBtn")) pop.classList.add("hidden");
+    if (!gifPop.contains(e.target) && !$("gifBtn").contains(e.target)) gifPop.classList.add("hidden");
     if (!$("menu").contains(e.target)) $("menu").classList.add("hidden");
   });
 
@@ -564,7 +681,9 @@
   function closeDialog() { $("overlay").classList.add("hidden"); }
   $("overlay").addEventListener("click", function (e) { if (e.target === this) closeDialog(); });
   $("lightbox").onclick = function () { this.classList.add("hidden"); };
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closeDialog(); $("lightbox").classList.add("hidden"); } });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeDialog(); $("lightbox").classList.add("hidden"); gifPop.classList.add("hidden"); pop.classList.add("hidden"); }
+  });
 
   function buttons(d, okText, okFn) {
     var row = el("div", "row");

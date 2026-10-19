@@ -11,7 +11,8 @@ const MAX_FRAME = 3_000_000;        // largest incoming message (about 2 MB imag
 const MAX_TEXT = 2000;              // characters per text message
 const MAX_CAPTION = 300;            // characters under an image
 const TEXT_GAP_MS = 700;            // min time between text messages per user
-const IMAGE_GAP_MS = 20_000;        // min time between images per user
+const IMAGE_GAP_MS = 20_000;        // min time between uploaded images per user
+const GIF_GAP_MS = 5_000;           // min time between GIFs from the GIF library per user
 const MAX_ADMIN_TRIES = 5;          // wrong admin passwords before lockout
 const LOCKOUT_MS = 10 * 60 * 1000;  // lockout length
 const SALT = "action-chat-v1";      // used to scramble IP addresses before storing
@@ -37,16 +38,16 @@ export default {
 
     if (url.pathname === "/" || url.pathname === "/index.html") {
       const adminName = cleanName(env.ADMIN_NAME) || "Admin";
-      const html = PAGE_HTML.replace(
-        "__ADMIN_NAME_JSON__",
-        JSON.stringify(adminName).replace(/</g, "\\u003c")
-      );
+      const klipyKey = String(env.KLIPY_KEY || "").replace(/[^A-Za-z0-9_-]/g, "");
+      const html = PAGE_HTML
+        .replace("__ADMIN_NAME_JSON__", JSON.stringify(adminName).replace(/</g, "\\u003c"))
+        .replace("__KLIPY_KEY_JSON__", JSON.stringify(klipyKey));
       const csp = [
         "default-src 'self'",
-        "img-src 'self' data: blob:",
+        "img-src 'self' data: blob: https://*.klipy.com https://klipy.com",
         "style-src 'self' 'unsafe-inline'",
         "script-src 'self' 'unsafe-inline'",
-        `connect-src 'self' wss://${url.host} ws://${url.host}`,
+        `connect-src 'self' wss://${url.host} ws://${url.host} https://api.klipy.com`,
         "frame-ancestors " + (env.EMBED_ALLOWED || "*"),
       ].join("; ");
       return new Response(html, {
@@ -54,7 +55,7 @@ export default {
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-cache",
           "content-security-policy": csp,
-          "referrer-policy": "no-referrer",
+          "referrer-policy": "strict-origin-when-cross-origin",
           "x-content-type-options": "nosniff",
         },
       });
@@ -67,10 +68,10 @@ export default {
 export class ChatRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.blocked = [];      // [{ bid, name, keys: [...], at }]
+    this.blocked = [];       // [{ bid, name, keys: [...], at }]
     this.imagesOn = true;
-    this.rate = new Map();  // userId -> { t, img }   (memory only)
-    this.failed = new Map(); // ipHash -> { count, at } (memory only)
+    this.rate = new Map();   // userId -> { t, img, gif }   (memory only)
+    this.failed = new Map(); // ipHash -> { count, at }     (memory only)
 
     // Answer client keep-alive pings without waking the room (saves free-plan time).
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
@@ -132,7 +133,6 @@ export class ChatRoom extends DurableObject {
     if (!name) return this.reject(ws, "Use 2 to 20 letters, numbers, spaces, or _ - .", "badname");
 
     const cid = String(data.cid || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 64);
-    //---- if (this.isBlocked(cid, me.iph)) return this.reject(ws, "You have been blocked from this chat.", "blocked"); ----
 
     const adminName = cleanName(this.env.ADMIN_NAME) || "Admin";
     let admin = false;
@@ -151,7 +151,9 @@ export class ChatRoom extends DurableObject {
       this.failed.delete(me.iph);
       admin = true;
     }
-        if (!admin && this.isBlocked(cid, me.iph)) return this.reject(ws, "You have been blocked from this chat.", "blocked");
+
+    // Blocks never apply to the admin (so blocking someone on the same Wi-Fi can't lock the admin out).
+    if (!admin && this.isBlocked(cid, me.iph)) return this.reject(ws, "You have been blocked from this chat.", "blocked");
 
     // Name must be unique among people currently online.
     for (const other of this.ctx.getWebSockets()) {
@@ -182,12 +184,25 @@ export class ChatRoom extends DurableObject {
 
   handleMessage(ws, me, data) {
     const now = Date.now();
-    const r = this.rate.get(me.id) || { t: 0, img: 0 };
+    const r = this.rate.get(me.id) || { t: 0, img: 0, gif: 0 };
     const from = { id: me.id, name: me.name, admin: me.admin };
     let out;
 
-    if (data.kind === "image") {
-      if (!this.imagesOn && !me.admin) return this.send(ws, { type: "error", text: "Images are turned off by the admin." });
+    if (data.kind === "image" || data.kind === "gif") {
+      if (!this.imagesOn && !me.admin) return this.send(ws, { type: "error", text: "Images and GIFs are turned off by the admin." });
+    }
+
+    if (data.kind === "gif") {
+      // A GIF chosen from the KLIPY library: we only pass along its web address.
+      const gifUrl = cleanGifUrl(data.url);
+      if (!gifUrl) return this.send(ws, { type: "error", text: "That GIF could not be sent." });
+      if (!me.admin && now - (r.gif || 0) < GIF_GAP_MS) {
+        const wait = Math.ceil((GIF_GAP_MS - (now - r.gif)) / 1000);
+        return this.send(ws, { type: "error", text: `You can post one GIF every 5 seconds. Wait ${wait}s.` });
+      }
+      r.gif = now;
+      out = { type: "msg", id: shortId(), ts: now, from, kind: "gif", url: gifUrl, text: cleanText(data.text, MAX_CAPTION) };
+    } else if (data.kind === "image") {
       const image = String(data.image || "");
       if (!/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(image)) {
         return this.send(ws, { type: "error", text: "Only JPG, PNG, WebP or GIF images are allowed." });
@@ -302,6 +317,19 @@ export function cleanName(n) {
   const s = String(n || "").normalize("NFC").replace(/\s+/g, " ").trim();
   if (s.length < 2 || s.length > 20) return "";
   return /^[\p{L}\p{N} _.\-]+$/u.test(s) ? s : "";
+}
+
+// Only allow GIF links that point to the KLIPY library (stops people posting random web images).
+export function cleanGifUrl(u) {
+  const s = String(u || "");
+  if (s.length > 1500) return "";
+  try {
+    const x = new URL(s);
+    if (x.protocol !== "https:") return "";
+    const h = x.hostname.toLowerCase();
+    if (h !== "klipy.com" && !h.endsWith(".klipy.com")) return "";
+    return x.href;
+  } catch { return ""; }
 }
 
 function cleanText(t, max) {
