@@ -1,65 +1,30 @@
-# Action Chat
+# Action Chat v2.0.0
 
 Free, embeddable group chat. No sign-up, messages are never saved.
 Runs on the Cloudflare free plan (Workers + Durable Objects).
+Developed by Michael Gerontides.
 
-## Files
-| File | What it is |
-|---|---|
-| `src/index.js` | The chat server |
-| `src/page.html` | The chat screen (design, colors, texts) |
-| `src/logo.png` | The lion logo |
-| `wrangler.jsonc` | Cloudflare settings, including the admin name |
-| `package.json` | Tells Cloudflare which deploy tool to use |
+## What's new in v2.0.0
+- **Emoji reactions** (👍 ❤️ 😂 😮 😢 🔥 🎉 👏): hover over a message, or tap it on a phone.
+- **Replies**: reply to a specific message. Click the quote to jump to the original.
+- **@mentions**: type @ to pick a name. The person gets a sound and a gold highlight.
+- **Confetti**: "congrats", "happy birthday", "χρόνια πολλά" or 🎉 makes confetti fall for everyone.
+- **Fun commands**: /roll, /roll 2d6, /flip, /8ball question, /me action, /help. Type //text to send a message starting with "/".
+- **Live polls** (admin): ⋮ menu → Start a poll. One vote per device, and votes can be changed.
+- **Trivia game** (admin): ⋮ menu → Start trivia. Includes 40 built-in questions, ignores accents and capitals, and accepts one small typo.
+- **Pinned announcement with countdown** (admin): ⋮ menu → Pin announcement, or use the 📌 button on a message.
+- **Emoji avatars** on the join screen.
+- **Unread counter** in the browser tab.
+- **Sounds on/off** in the ⋮ menu.
+- **Version and developer name** shown on the join screen, in the online list and in the menu.
 
-## Setup (no installs, about 15 minutes)
+Polls, trivia scores and the pinned announcement are kept until the admin removes them,
+so they survive when the chat room goes to sleep. No chat messages are stored.
 
-### 1. Put the files on GitHub
-1. Go to github.com, then **New repository**. Name it `action-chat`. Private is fine. Click **Create**.
-2. Click **uploading an existing file**.
-3. Drag in **everything inside** the unzipped `action-chat` folder, including the `src` folder.
-4. Click **Commit changes**.
+## Publish an update
+1. In GitHub, open the `src` folder of the ActionChat repository.
+2. Click Add file → Upload files, drag in `index.js` and `page.html`, and click Commit changes.
+3. Optionally, upload this README.md to the top level of the repository.
+4. Cloudflare redeploys automatically. Wait for the green tick under Deployments, then press Ctrl + F5 on the chat page.
 
-### 2. Deploy on Cloudflare
-1. Open dash.cloudflare.com, then **Workers & Pages**, then **Create**.
-2. Choose **Import a repository** and connect your GitHub account the first time.
-3. Pick the `action-chat` repository.
-4. Leave the build settings at their defaults. The deploy command is `npx wrangler deploy`.
-5. Click **Deploy** and wait about 1 minute.
-6. Cloudflare shows your address, for example `https://action-chat.YOURNAME.workers.dev`.
-
-### 3. Set the admin password (required)
-1. In Cloudflare, open the `action-chat` Worker, then **Settings**, then **Variables and Secrets**, then **Add**.
-2. Type: **Secret**. Name: `ADMIN_PASSWORD`. Value: your password.
-3. Click **Deploy** or **Save**.
-
-Without this step, nobody can log in as admin.
-
-To log in as admin, type the admin name (`Admin` by default) on the join screen. A password box appears.
-To change the admin name, edit `ADMIN_NAME` in `wrangler.jsonc` on GitHub. Cloudflare redeploys automatically.
-
-### 4. Put it on your website
-```html
-<iframe src="https://action-chat.YOURNAME.workers.dev"
-        style="width:100%;height:600px;border:0;border-radius:12px"
-        allow="clipboard-write" title="Action Chat"></iframe>
-```
-Separate rooms: add `?room=name` to the address, for example `...workers.dev/?room=events`. Each room is independent.
-
-Optional: to allow embedding only on your own site, add a variable `EMBED_ALLOWED` in `wrangler.jsonc` under `vars`, for example `"https://www.example.com"`.
-
-## Admin tools
-- Hover over a message to **delete** it or **block** its author.
-- Hover over a name in the Online list to block that person.
-- Use the ⋮ menu for **Turn images on/off**, **Blocked users** (unblock), and **Clear chat for everyone**.
-
-Blocking works on the person's device. The option "Also block their internet connection" is stronger, but can block other people on the same Wi-Fi.
-IP addresses are scrambled (hashed) before storage and are never kept in readable form.
-
-## Built-in limits (keep it free and fast)
-- Text: 2,000 characters, one message every 0.7 seconds per person.
-- Images: shrunk in the browser to about 200 KB. One image every 20 seconds per person.
-- GIFs: up to 2 MB.
-- The admin is exempt from the speed limits.
-
-If the daily free limits are ever exceeded, the chat pauses until 03:00 Greek time. Cloudflare never sends a bill on the free plan.
+Your secrets (ADMIN_PASSWORD, KLIPY_KEY) and logo.png stay as they are.
