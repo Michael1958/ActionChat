@@ -7,7 +7,7 @@
 <title>Action Chat</title>
 <link rel="icon" href="/logo.png">
 <style>
-  /* ===== Sunset theme (v2.1.0) ===== */
+  /* ===== Sunset theme ===== */
   :root {
     --text: #1f2333; --muted: #555b73; --soft: #6b7088;
     --glass: rgba(255,255,255,.30); --glass2: rgba(255,255,255,.46); --glassLine: rgba(255,255,255,.62);
@@ -42,7 +42,7 @@
   #join { position: relative; z-index: 1; height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
   .card { width: 100%; max-width: 390px; background: rgba(255,255,255,.80); border: 1px solid var(--glassLine);
     border-radius: 18px; padding: 24px 22px 16px; text-align: center; box-shadow: 0 16px 50px rgba(60,40,80,.25);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); margin: auto; }
   .card > img { width: 96px; height: 96px; }
   .card h1 { margin: 6px 0 4px; font-size: 25px; letter-spacing: .3px; }
   .card p { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
@@ -50,11 +50,15 @@
     border: 1px solid var(--line); border-radius: 10px; outline: none; }
   .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
   .av-label { text-align: left; font-size: 12.5px; color: var(--muted); margin: 2px 0 6px; }
-  #avPick { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 14px; max-height: 172px; overflow-y: auto; padding: 2px; }
-  #avPick button { height: 38px; border-radius: 10px; font-size: 20px; background: #fff; border: 1px solid var(--line); }
+  #avPick { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px; max-height: 172px; overflow-y: auto; padding: 2px; }
+  #avPick button { height: 38px; border-radius: 10px; font-size: 20px; background: #fff; border: 1px solid var(--line); padding: 0; }
   #avPick button:hover { border-color: #c9bfd3; }
   #avPick button.sel { border: 2px solid var(--gold); background: #fff4d1; }
   #avPick .letter { font-size: 13px; font-weight: 700; color: var(--muted); }
+  #avPick .upload { font-size: 18px; background: #eef4ff; border: 1.5px dashed #8fb0f2; }
+  #avPick .upload:hover { background: #e0ebff; }
+  #avPick .ph img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; display: block; margin: auto; }
+  .av-hint { text-align: left; font-size: 11.5px; color: var(--muted); margin: 0 0 14px; }
   .btn { width: 100%; padding: 11px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(37,99,235,.3); }
   .btn:hover { background: var(--accent2); }
   .btn:disabled { opacity: .6; cursor: default; }
@@ -130,6 +134,8 @@
   .avatar.emoji { font-size: 22px; }
   .avatar.admin { background: #1a1608 !important; border-color: var(--gold); overflow: hidden; }
   .avatar.admin img { width: 32px; height: 32px; }
+  .avatar.photo { background: #fff !important; overflow: hidden; }
+  .avatar.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .meta { display: flex; align-items: baseline; gap: 8px; }
   .name { font-weight: 700; font-size: 14.5px; text-shadow: 0 1px 2px rgba(255,255,255,.55); }
   .name.admin { color: var(--goldText); }
@@ -158,6 +164,7 @@
   .msg.action { align-items: center; padding: 4px 8px; }
   .msg.action .avatar { width: 26px; height: 26px; flex-basis: 26px; font-size: 13px; border-width: 1.5px; }
   .msg.action .avatar.admin img { width: 20px; height: 20px; }
+  .msg.action .avatar.photo img { width: 100%; height: 100%; }
   .msg.action .act { flex: 0 1 auto; background: rgba(255,255,255,.72); padding: 4px 12px; border-radius: 14px; }
   .act { color: #3b3f55; font-style: italic; overflow-wrap: anywhere; }
   .act b { font-style: normal; color: var(--text); }
@@ -206,6 +213,7 @@
   .user .avatar { width: 30px; height: 30px; flex-basis: 30px; font-size: 13px; border-width: 1.5px; }
   .user .avatar.emoji { font-size: 17px; }
   .user .avatar.admin img { width: 24px; height: 24px; }
+  .user .avatar.photo img { width: 100%; height: 100%; }
   .user .uname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   .user .you { color: var(--muted); font-size: 12px; }
   .user .ban { display: none; width: 26px; height: 26px; border-radius: 6px; place-items: center; color: var(--muted); }
@@ -228,6 +236,7 @@
   #mentionPop .avatar { width: 24px; height: 24px; flex-basis: 24px; font-size: 11px; border-width: 1px; }
   #mentionPop .avatar.emoji { font-size: 14px; }
   #mentionPop .avatar.admin img { width: 18px; height: 18px; }
+  #mentionPop .avatar.photo img { width: 100%; height: 100%; }
 
   #gifPop { right: 14px; bottom: 68px; width: 360px; max-width: calc(100% - 28px); height: 420px; max-height: calc(100% - 80px);
     display: flex; flex-direction: column; overflow: hidden; }
@@ -320,8 +329,10 @@
     <p>Pick a name to join. No sign-up needed.<br>Messages are not saved.</p>
     <input class="field" id="nameInput" maxlength="20" placeholder="Your name" required>
     <input class="field hidden" id="pwInput" type="password" placeholder="Admin password" autocomplete="current-password">
-    <div class="av-label">Choose your avatar</div>
+    <div class="av-label">Choose your avatar, or upload your own photo</div>
     <div id="avPick"></div>
+    <div class="av-hint" id="avHint">📷 Your photo is made small on your device and is only shown while you're online.</div>
+    <input type="file" id="photoFile" accept="image/*" class="hidden">
     <button class="btn" id="joinBtn" type="submit">Join chat</button>
     <div class="err" id="joinErr"></div>
     <div class="credit" id="joinCredit"></div>
@@ -394,6 +405,9 @@
   var GIF_FILTER = "high";
   var MAX_GIF = 2 * 1024 * 1024;
   var MAX_IMG_SIDE = 1280;
+  var PHOTO_SIZE = 80;                 // profile photo size in pixels (sharp at 40px on high-resolution screens)
+  var MAX_PHOTO = 12000;               // profile photo limit in characters (the server accepts up to 16000)
+  var PHOTO_KEY = "__photo__";
   var REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏"];
   // Must match the AVATARS list in index.js exactly.
   var AVATARS = ["👶", "🧒", "👧", "👦", "🧑", "👩", "👨", "👱‍♀️", "👱", "👩‍🦰", "👨‍🦰", "👩‍🦱", "👨‍🦱", "👩‍🦳", "👨‍🦳", "👩‍🦲", "👨‍🦲", "🧔", "🧓", "👵", "👴", "👮", "🕵️", "💂", "👷", "🤴", "👸", "🤵", "👰", "🧑‍⚕️", "🧑‍🎓", "🧑‍🏫", "🧑‍🍳", "🧑‍🌾", "🧑‍🔧", "🧑‍💻", "🧑‍🎤", "🧑‍🎨", "🧑‍✈️", "🧑‍🚀", "🧑‍🚒", "🥷", "🦸", "🦹", "🧙", "🧚", "🧛", "🧜", "🧝", "🧞", "🧟", "🎅", "🤶", "🤠", "🦁", "🐯", "🐺", "🦊", "🐻", "🐼", "🐨", "🐸", "🐵", "🦄", "🐙", "🦅", "🐬", "🚀", "⚡", "🔥", "⭐", "🎮", "⚽", "🎸"];
@@ -452,8 +466,13 @@
   var ws = null, me = null, myName = "", myPassword = "", users = {}, imagesOn = true;
   var noReconnect = false, retry = 0, retryTimer = null, pingTimer = null, joined = false;
   var cid = getCid();
-  var myAv = AVATARS.indexOf(load("ac_av")) >= 0 ? load("ac_av") : "";
+  var myPhoto = validPhoto(load("ac_photo")) ? load("ac_photo") : "";
+  var savedAv = load("ac_av");
+  var usePhoto = savedAv === PHOTO_KEY && !!myPhoto;
+  var myAv = AVATARS.indexOf(savedAv) >= 0 ? savedAv : "";
   var soundOn = load("ac_sound") !== "off";
+  var photos = {};           // userId -> photo
+  var known = {};            // userId -> { id, name, admin, av }
   var reacts = {};
   var replyTo = null;
   var poll = null, myVote = null, trivia = null, pin = null;
@@ -468,23 +487,35 @@
       return c;
     } catch (e) { return String(Math.random()).slice(2) + Date.now(); }
   }
-  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function store(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} }
   function load(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+  function validPhoto(p) { return typeof p === "string" && p.length <= 16000 && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function colorFor(name) { var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return COLORS[h % COLORS.length]; }
   function initial(name) { return Array.from(name.trim())[0].toUpperCase(); }
   function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
   function isAdminName(n) { return n.trim().toLowerCase() === ADMIN_NAME.toLowerCase(); }
   function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  function remember(u) { if (u && u.id) known[u.id] = { id: u.id, name: u.name, admin: !!u.admin, av: u.av || "" }; }
   function avatar(user) {
-    var a = el("div", "avatar" + (user.admin ? " admin" : (user.av ? " emoji" : "")));
+    var ph = !user.admin && imagesOn && photos[user.id];
+    var a = el("div", "avatar" + (user.admin ? " admin" : (ph ? " photo" : (user.av ? " emoji" : ""))));
+    if (user.id) a.dataset.uid = user.id;
     if (user.admin) { var i = el("img"); i.src = "/logo.png"; i.alt = ""; a.appendChild(i); }
+    else if (ph) { var p = el("img"); p.src = ph; p.alt = user.name; a.appendChild(p); }
     else { a.style.background = colorFor(user.name); a.textContent = user.av || initial(user.name); }
     return a;
+  }
+  function refreshAvatars(id) {
+    var sel = id ? '.avatar[data-uid="' + cssEsc(id) + '"]' : ".avatar[data-uid]";
+    document.querySelectorAll(sel).forEach(function (e) {
+      var u = known[e.dataset.uid]; if (u) e.replaceWith(avatar(u));
+    });
   }
   function icon(path) { var d = document.createElement("div"); d.innerHTML = '<svg viewBox="0 0 24 24">' + path + "</svg>"; return d.firstChild; }
   var ICON_TRASH = '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>';
   var ICON_BAN = '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>';
+  var ICON_NOPHOTO = '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-6 6"/><path d="M3 3l18 18"/>';
   var ICON_SMILE = '<circle cx="11" cy="12" r="8"/><path d="M8 14c.7 1 1.8 1.6 3 1.6s2.3-.6 3-1.6"/><circle cx="8.5" cy="10" r=".8" fill="currentColor"/><circle cx="13.5" cy="10" r=".8" fill="currentColor"/><path d="M20 3v5M17.5 5.5h5"/>';
   var ICON_REPLY = '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v4"/>';
   var ICON_PIN = '<path d="M12 17v5"/><path d="M8 3h8l-1 6 3 4H6l3-4z"/>';
@@ -555,20 +586,78 @@
   document.addEventListener("visibilitychange", function () { if (!document.hidden) clearUnread(); });
   window.addEventListener("focus", clearUnread);
 
-  // ---------- join ----------
+  // ---------- join: avatar picker and own photo ----------
   var avPick = $("avPick");
-  [""].concat(AVATARS).forEach(function (a) {
-    var b = el("button", a ? null : "letter", a || "Aa"); b.type = "button"; b.title = a ? "Avatar " + a : "First letter of my name";
-    if (a === myAv) b.classList.add("sel");
-    b.onclick = function () {
-      myAv = a; store("ac_av", a);
-      avPick.querySelectorAll("button").forEach(function (x) { x.classList.remove("sel"); }); b.classList.add("sel");
+  var canPhoto = (function () { try { var c = document.createElement("canvas"); return !!(c.getContext && c.getContext("2d") && c.toDataURL); } catch (e) { return false; } })();
+  if (!canPhoto) $("avHint").classList.add("hidden");
+
+  function selectedKey() { return usePhoto ? PHOTO_KEY : myAv; }
+  function buildAvPick() {
+    avPick.textContent = "";
+    function add(btn, key) {
+      btn.type = "button";
+      if (key !== null && key === selectedKey()) btn.classList.add("sel");
+      if (key !== null) btn.onclick = function () {
+        usePhoto = key === PHOTO_KEY; if (!usePhoto) myAv = key;
+        store("ac_av", key); buildAvPick();
+      };
+      avPick.appendChild(btn); return btn;
+    }
+    add(el("button", "letter", "Aa"), "").title = "First letter of my name";
+    if (canPhoto) {
+      var up = add(el("button", "upload", "📷"), null);
+      up.title = myPhoto ? "Change my photo" : "Upload my own photo";
+      up.onclick = function () { $("photoFile").click(); };
+    }
+    if (myPhoto) {
+      var pb = el("button", "ph"); var im = el("img"); im.src = myPhoto; im.alt = "My photo"; pb.appendChild(im);
+      add(pb, PHOTO_KEY).title = "My photo";
+    }
+    AVATARS.forEach(function (a) { add(el("button", null, a), a).title = "Avatar " + a; });
+    var s = avPick.querySelector(".sel"); if (s) s.scrollIntoView({ block: "nearest" });
+  }
+  buildAvPick();
+
+  // Crops the picture to a square, shrinks it to PHOTO_SIZE pixels and compresses it, all on the user's device.
+  function makePhoto(file, done) {
+    if (!file || !/^image\//.test(file.type || "image/")) return done(null, "Please choose a picture file.");
+    if (file.size > 20 * 1024 * 1024) return done(null, "That picture is too large (max 20 MB).");
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var s = Math.min(img.naturalWidth, img.naturalHeight);
+      if (!s) { URL.revokeObjectURL(url); return done(null, "That picture could not be read."); }
+      var sx = (img.naturalWidth - s) / 2, sy = (img.naturalHeight - s) / 2;
+      var cv = document.createElement("canvas"); cv.width = cv.height = PHOTO_SIZE;
+      var cx = cv.getContext("2d");
+      cx.fillStyle = "#ffffff"; cx.fillRect(0, 0, PHOTO_SIZE, PHOTO_SIZE);
+      cx.imageSmoothingQuality = "high";
+      cx.drawImage(img, sx, sy, s, s, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
+      URL.revokeObjectURL(url);
+      var q = 0.82, d = cv.toDataURL("image/webp", q), type = "image/webp";
+      if (d.indexOf("data:image/webp") !== 0) { type = "image/jpeg"; d = cv.toDataURL(type, q); }
+      while (d.length > MAX_PHOTO && q > 0.3) { q -= 0.12; d = cv.toDataURL(type, q); }
+      if (!validPhoto(d) || d.length > MAX_PHOTO) return done(null, "That picture could not be made small enough. Try another one.");
+      done(d);
     };
-    avPick.appendChild(b);
-  });
-  var selAv = avPick.querySelector(".sel"); if (selAv) selAv.scrollIntoView({ block: "nearest" });
+    img.onerror = function () { URL.revokeObjectURL(url); done(null, "That picture could not be read. Try a JPG or PNG."); };
+    img.src = url;
+  }
+  $("photoFile").onchange = function () {
+    var f = this.files[0]; this.value = ""; if (!f) return;
+    $("joinErr").textContent = "";
+    makePhoto(f, function (data, err) {
+      if (!data) { $("joinErr").textContent = err; return; }
+      myPhoto = data; usePhoto = true;
+      store("ac_photo", data); store("ac_av", PHOTO_KEY);
+      buildAvPick();
+    });
+  };
+
   $("nameInput").value = load("ac_name");
-  function updatePw() { $("pwInput").classList.toggle("hidden", !isAdminName($("nameInput").value)); }
+  function updatePw() {
+    var adm = isAdminName($("nameInput").value);
+    $("pwInput").classList.toggle("hidden", !adm);
+  }
   $("nameInput").addEventListener("input", updatePw); updatePw();
 
   $("joinForm").addEventListener("submit", function (e) {
@@ -585,6 +674,7 @@
     $("app").classList.add("hidden"); $("join").classList.remove("hidden");
     $("joinBtn").disabled = false; $("joinBtn").textContent = "Join chat";
     $("joinErr").textContent = msg || ""; joined = false;
+    buildAvPick();
   }
 
   // ---------- connection ----------
@@ -595,7 +685,8 @@
     catch (e) { return scheduleRetry(); }
     var sock = ws;
     sock.onopen = function () {
-      sock.send(JSON.stringify({ type: "join", name: myName, password: myPassword, cid: cid, av: myAv }));
+      sock.send(JSON.stringify({ type: "join", name: myName, password: myPassword, cid: cid,
+        av: usePhoto ? "" : myAv, photo: usePhoto && !isAdminName(myName) ? myPhoto : "" }));
     };
     sock.onmessage = function (ev) {
       if (ev.data === "pong") return;
@@ -620,19 +711,31 @@
   function setStatus(text) { var s = $("status"); s.textContent = text || ""; s.classList.toggle("hidden", !text); }
   function send(obj) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(obj)); return true; } toast("Not connected yet.", true); return false; }
 
+  function addUser(u) {
+    if (u.photo && validPhoto(u.photo)) photos[u.id] = u.photo; else delete photos[u.id];
+    delete u.photo;
+    users[u.id] = u; remember(u);
+  }
+  function forgetMyPhoto() {
+    myPhoto = ""; usePhoto = false;
+    store("ac_photo", ""); store("ac_av", myAv);
+  }
+
   // ---------- incoming ----------
   function handle(d) {
     switch (d.type) {
       case "welcome":
         me = d.you; imagesOn = d.imagesOn; retry = 0; setStatus("");
         store("ac_name", myName);
-        users = {}; d.users.forEach(function (u) { users[u.id] = u; }); mentionRe = null;
+        users = {}; d.users.forEach(addUser); mentionRe = null;
+        if (d.photoNote === "removed") { forgetMyPhoto(); toast("The admin removed your photo, so your avatar is shown instead.", true); }
+        else if (d.photoNote === "invalid") toast("Your photo could not be used. Your avatar is shown instead.", true);
         if (!joined) { $("join").classList.add("hidden"); $("app").classList.remove("hidden"); $("input").focus(); }
         else sys("Reconnected.");
         joined = true;
         document.body.classList.toggle("is-admin", !!me.admin);
         poll = d.poll; myVote = d.poll ? d.poll.myVote : null; trivia = d.trivia; pin = d.pin;
-        renderCards(); renderUsers(); updateImageButtons();
+        renderCards(); renderUsers(); updateImageButtons(); refreshAvatars();
         clearInterval(pingTimer);
         pingTimer = setInterval(function () { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
         break;
@@ -641,8 +744,13 @@
         showJoin(d.text);
         if (d.code === "badpass") { $("pwInput").value = ""; $("pwInput").focus(); }
         break;
-      case "join": users[d.user.id] = d.user; mentionRe = null; renderUsers(); break;
-      case "leave": delete users[d.id]; mentionRe = null; renderUsers(); break;
+      case "join": addUser(d.user); mentionRe = null; renderUsers(); refreshAvatars(d.user.id); break;
+      case "leave": delete users[d.id]; if (photos[d.id]) { delete photos[d.id]; refreshAvatars(d.id); } mentionRe = null; renderUsers(); break;
+      case "photo":
+        if (d.photo && validPhoto(d.photo)) photos[d.id] = d.photo; else delete photos[d.id];
+        refreshAvatars(d.id); renderUsers();
+        if (me && d.id === me.id && !d.photo) { forgetMyPhoto(); toast("The admin removed your profile photo.", true); }
+        break;
       case "msg": addMessage(d); break;
       case "react": applyReact(d); break;
       case "delete":
@@ -657,8 +765,8 @@
         sys("The chat was cleared by the admin.");
         break;
       case "settings":
-        imagesOn = d.imagesOn; updateImageButtons();
-        sys(imagesOn ? "The admin turned images and GIFs on." : "The admin turned images and GIFs off.");
+        imagesOn = d.imagesOn; updateImageButtons(); refreshAvatars(); renderUsers();
+        sys(imagesOn ? "The admin turned images, GIFs and photos on." : "The admin turned images, GIFs and photos off.");
         break;
       case "poll":
         if (!d.poll || !poll || d.poll.id !== poll.id) myVote = null;
@@ -737,6 +845,7 @@
   }
 
   function addMessage(d) {
+    if (!known[d.from.id]) remember(d.from);
     var mine = me && d.from.id === me.id;
     var stick = nearBottom() || mine;
     var row = el("div", "msg"); row.dataset.id = d.id; row.dataset.user = d.from.id;
@@ -989,6 +1098,14 @@
         n.title = "Mention " + u.name;
         n.onclick = function () { insertAtCaret("@" + u.name + " "); $("aside").classList.remove("open"); };
         if (me && me.admin && !u.admin) {
+          if (photos[u.id]) {
+            var rp = el("button", "ban"); rp.title = "Remove " + u.name + "'s photo"; rp.appendChild(icon(ICON_NOPHOTO));
+            rp.onclick = function () {
+              confirmDialog("Remove " + u.name + "'s photo?", "Their photo is replaced by their avatar for everyone. They can't upload a new one on this device until the chat restarts.", "Remove photo",
+                function () { send({ type: "removePhoto", userId: u.id }); });
+            };
+            r.appendChild(rp);
+          }
           var b = el("button", "ban"); b.title = "Block " + u.name; b.appendChild(icon(ICON_BAN));
           b.onclick = function () { askBlock(u); }; r.appendChild(b);
         }
@@ -1223,7 +1340,7 @@
       item("📌 Pin announcement", function () { pinDialog(""); });
       item("📊 Start a poll", pollDialog);
       item(trivia ? "🧠 Next trivia question" : "🧠 Start trivia", function () { triviaDialog(); });
-      item(imagesOn ? "🖼️ Turn images and GIFs off" : "🖼️ Turn images and GIFs on", function () { send({ type: "images", on: !imagesOn }); });
+      item(imagesOn ? "🖼️ Turn images, GIFs and photos off" : "🖼️ Turn images, GIFs and photos on", function () { send({ type: "images", on: !imagesOn }); });
       item("🚫 Blocked users", function () { send({ type: "listBlocked" }); });
       item("🧹 Clear chat for everyone", function () {
         confirmDialog("Clear the chat?", "This removes all messages from everyone's screen.", "Clear", function () { send({ type: "clear" }); });
@@ -1276,7 +1393,7 @@
   function askBlock(user) {
     openDialog(function (d) {
       d.appendChild(el("h4", null, "Block " + user.name + "?"));
-      var purge = checkbox(d, "Remove their messages", "Deletes everything they wrote from all screens.", true);
+      var purge = checkbox(d, "Remove their messages", "Deletes everything they wrote from all screens. Their photo is always removed.", true);
       var net = checkbox(d, "Also block their internet connection",
         "Stronger, but may also block other people on the same Wi-Fi or office network.", false);
       buttons(d, "Block", function () { send({ type: "block", userId: user.id, purge: purge.checked, byNetwork: net.checked }); });
@@ -1343,7 +1460,8 @@
         .forEach(function (x) { var li = el("li"); li.appendChild(el("code", null, x[0])); li.appendChild(document.createTextNode(x[1])); ul.appendChild(li); });
       ["Hover over a message (or tap it on a phone) to react 👍 or reply ↩.",
        "Words like \"congrats\" or \"happy birthday\" and 🎉 make confetti rain for everyone.",
-       "Choose your avatar on the join screen. Turn sounds on or off in the ⋮ menu."]
+       "Choose an avatar or upload your own photo 📷 on the join screen. Leave the chat to change it.",
+       "Turn sounds on or off in the ⋮ menu."]
         .forEach(function (t) { ul.appendChild(el("li", null, t)); });
       d.appendChild(ul);
       var row = el("div", "row"); var c = el("button", "btn-blue", "Got it"); c.type = "button"; c.onclick = closeDialog; row.appendChild(c); d.appendChild(row);

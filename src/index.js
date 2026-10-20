@@ -1,18 +1,20 @@
-// Action Chat v2.1.0 - real-time group chat for Cloudflare Workers (free plan).
+// Action Chat v2.2.0 - real-time group chat for Cloudflare Workers (free plan).
 // Developed by Michael Gerontides.
 // Chat messages live only in memory and are never written to disk.
-// Stored (small, no chat text): blocked users, images on/off, current poll, trivia game, pinned announcement.
+// Stored (small, no chat text): blocked users, images on/off, current poll, trivia game, pinned announcement,
+// and the profile photos of people who are online right now (deleted as soon as they leave).
 
 import { DurableObject } from "cloudflare:workers";
 import PAGE_HTML from "./page.html";
 import LOGO_PNG from "./logo.png";
 
-const APP_VERSION = "2.1.0";
+const APP_VERSION = "2.2.0";
 
 // ---- Limits (tuned to stay well inside the free plan) ----
 const MAX_FRAME = 3_000_000;        // largest incoming message (about 2 MB image after encoding)
 const MAX_TEXT = 2000;              // characters per text message
 const MAX_CAPTION = 300;            // characters under an image
+const MAX_PHOTO = 16_000;           // largest profile photo (characters); the browser makes them about 4-10 KB
 const TEXT_GAP_MS = 700;            // min time between text messages / commands per user
 const IMAGE_GAP_MS = 20_000;        // min time between uploaded images per user
 const GIF_GAP_MS = 5_000;           // min time between GIFs from the GIF library per user
@@ -89,6 +91,8 @@ export class ChatRoom extends DurableObject {
     this.poll = null;        // { id, q, options, votes: { key: index }, open }
     this.trivia = null;      // { id, q, answers, display, status, round, scores, winner }
     this.pin = null;         // { text, until, at }
+    this.photos = new Map(); // userId -> photo (only people online right now)
+    this.noPhoto = new Set();// devices whose photo the admin removed (memory only)
     this.rate = new Map();   // userId -> timestamps (memory only)
     this.failed = new Map(); // ipHash -> { count, at } (memory only)
     this.pollTimer = null;
@@ -103,6 +107,20 @@ export class ChatRoom extends DurableObject {
       this.poll = (await ctx.storage.get("poll")) || null;
       this.trivia = (await ctx.storage.get("trivia")) || null;
       this.pin = (await ctx.storage.get("pin")) || null;
+
+      // Reload photos of people still connected (after the room wakes up); delete any leftovers.
+      const live = new Set();
+      for (const s of ctx.getWebSockets()) {
+        const a = s.deserializeAttachment();
+        if (a && a.name && a.ph) live.add(a.id);
+      }
+      const stored = await ctx.storage.list({ prefix: "ph:" });
+      const stale = [];
+      for (const [k, v] of stored) {
+        const id = k.slice(3);
+        if (live.has(id)) this.photos.set(id, v); else stale.push(k);
+      }
+      for (let i = 0; i < stale.length; i += 128) await ctx.storage.delete(stale.slice(i, i + 128));
     });
   }
 
@@ -112,7 +130,7 @@ export class ChatRoom extends DurableObject {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ id: shortId(), iph, name: null, admin: false, cid: null, av: "" });
+    server.serializeAttachment({ id: shortId(), iph, name: null, admin: false, cid: null, av: "", ph: false });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -137,6 +155,7 @@ export class ChatRoom extends DurableObject {
       case "block": if (me.admin) await this.handleBlock(ws, data); return;
       case "unblock": if (me.admin) await this.handleUnblock(ws, data); return;
       case "listBlocked": if (me.admin) this.sendBlockedList(ws); return;
+      case "removePhoto": if (me.admin) await this.removePhoto(ws, data); return;
       case "images":
         if (!me.admin) return;
         this.imagesOn = !!data.on;
@@ -202,9 +221,22 @@ export class ChatRoom extends DurableObject {
       }
     }
 
+    // Profile photo (the admin always shows the lion logo).
+    let photo = "", photoNote = "";
+    if (!admin && data.photo) {
+      if (cid && this.noPhoto.has(cid)) photoNote = "removed";
+      else if (validPhoto(data.photo)) photo = data.photo;
+      else photoNote = "invalid";
+    }
+
     me.name = name; me.admin = admin; me.cid = cid;
     me.av = AVATARS.includes(data.av) ? data.av : "";
+    me.ph = !!photo;
     ws.serializeAttachment(me);
+    if (photo) {
+      this.photos.set(me.id, photo);
+      await this.ctx.storage.put("ph:" + me.id, photo);
+    }
 
     const poll = this.pollPublic();
     if (poll) {
@@ -215,13 +247,16 @@ export class ChatRoom extends DurableObject {
       type: "welcome",
       version: APP_VERSION,
       you: userOf(me),
-      users: this.onlineUsers(),
+      photoNote,
+      users: this.onlineUsers(true),
       imagesOn: this.imagesOn,
       poll,
       trivia: this.triviaPublic(),
       pin: this.pin,
     });
-    this.broadcast({ type: "join", user: userOf(me) }, ws);
+    const joined = userOf(me);
+    if (photo) joined.photo = photo;
+    this.broadcast({ type: "join", user: joined }, ws);
   }
 
   // ---------- messages & commands ----------
@@ -448,11 +483,29 @@ export class ChatRoom extends DurableObject {
 
   // ---------- moderation ----------
 
-  async handleBlock(adminWs, data) {
-    const target = this.ctx.getWebSockets().find((s) => {
+  findUser(id) {
+    return this.ctx.getWebSockets().find((s) => {
       const a = s.deserializeAttachment();
-      return a && a.id === data.userId && a.name;
+      return a && a.id === id && a.name;
     });
+  }
+
+  async removePhoto(adminWs, data) {
+    const target = this.findUser(data.userId);
+    if (!target) return this.send(adminWs, { type: "error", text: "That user has already left." });
+    const t = target.deserializeAttachment();
+    if (!t.ph) return this.send(adminWs, { type: "info", text: `${t.name} has no photo.` });
+    t.ph = false;
+    target.serializeAttachment(t);
+    this.photos.delete(t.id);
+    await this.ctx.storage.delete("ph:" + t.id);
+    if (t.cid) this.noPhoto.add(t.cid);
+    this.broadcast({ type: "photo", id: t.id, photo: null });
+    this.send(adminWs, { type: "info", text: `${t.name}'s photo was removed.` });
+  }
+
+  async handleBlock(adminWs, data) {
+    const target = this.findUser(data.userId);
     if (!target) return this.send(adminWs, { type: "error", text: "That user has already left." });
     const t = target.deserializeAttachment();
     if (t.admin) return this.send(adminWs, { type: "error", text: "You cannot block the admin." });
@@ -465,6 +518,7 @@ export class ChatRoom extends DurableObject {
     if (this.blocked.length > 1000) this.blocked = this.blocked.slice(-1000);
     await this.ctx.storage.put("blocked", this.blocked);
 
+    if (t.ph) this.broadcast({ type: "photo", id: t.id, photo: null });
     if (data.purge) this.broadcast({ type: "purge", userId: t.id });
     this.send(target, { type: "rejected", code: "blocked", text: "You have been blocked from this chat." });
     this.leave(target, 4003);
@@ -491,12 +545,15 @@ export class ChatRoom extends DurableObject {
     return this.blocked.some((b) => (cid && b.keys.includes("c:" + cid)) || b.keys.includes("i:" + iph));
   }
 
-  onlineUsers() {
+  onlineUsers(withPhotos) {
     const users = [];
     for (const s of this.ctx.getWebSockets()) {
       if (s.readyState !== 1) continue;
       const a = s.deserializeAttachment();
-      if (a && a.name) users.push(userOf(a));
+      if (!a || !a.name) continue;
+      const u = userOf(a);
+      if (withPhotos && this.photos.has(a.id)) u.photo = this.photos.get(a.id);
+      users.push(u);
     }
     return users;
   }
@@ -504,9 +561,14 @@ export class ChatRoom extends DurableObject {
   leave(ws, code) {
     const a = ws.deserializeAttachment();
     if (!a || !a.name) return;
-    a.name = null; // make sure we announce the leave only once
+    const hadPhoto = a.ph;
+    a.name = null; a.ph = false; // make sure we announce the leave only once
     try { ws.serializeAttachment(a); } catch {}
     this.rate.delete(a.id);
+    if (hadPhoto || this.photos.has(a.id)) {
+      this.photos.delete(a.id);
+      try { this.ctx.storage.delete("ph:" + a.id); } catch {}
+    }
     this.broadcast({ type: "leave", id: a.id }, ws);
     try { ws.close(code === 1005 || code === 1006 || !code ? 1000 : code, "bye"); } catch {}
   }
@@ -534,6 +596,11 @@ export class ChatRoom extends DurableObject {
 // ---------- pure helpers ----------
 
 function userOf(a) { return { id: a.id, name: a.name, admin: !!a.admin, av: a.av || "" }; }
+
+function validPhoto(p) {
+  const s = String(p || "");
+  return s.length <= MAX_PHOTO && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(s);
+}
 
 function cleanRoom(r) {
   return (String(r || "main").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32)) || "main";
