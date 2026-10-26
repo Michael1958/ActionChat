@@ -1,20 +1,21 @@
-// Action Chat v2.2.0 - real-time group chat for Cloudflare Workers (free plan).
+// Action Chat v2.3.0 - real-time group chat for Cloudflare Workers (free plan).
 // Developed by Michael Gerontides.
-// Chat messages live only in memory and are never written to disk.
-// Stored (small, no chat text): blocked users, images on/off, current poll, trivia game, pinned announcement,
+// Chat messages are never written to the server's disk. Each user's browser keeps its own copy for 7 days.
+// Stored on the server (small, no chat text): blocked users, images on/off, current poll, trivia game,
+// pinned announcement, a 7-day list of deleted message IDs (so saved copies can be cleaned up),
 // and the profile photos of people who are online right now (deleted as soon as they leave).
 
 import { DurableObject } from "cloudflare:workers";
 import PAGE_HTML from "./page.html";
 import LOGO_PNG from "./logo.png";
 
-const APP_VERSION = "2.2.0";
+const APP_VERSION = "2.3.0";
 
 // ---- Limits (tuned to stay well inside the free plan) ----
 const MAX_FRAME = 3_000_000;        // largest incoming message (about 2 MB image after encoding)
 const MAX_TEXT = 2000;              // characters per text message
 const MAX_CAPTION = 300;            // characters under an image
-const MAX_PHOTO = 16_000;           // largest profile photo (characters); the browser makes them about 4-10 KB
+const MAX_PHOTO = 16_000;           // largest profile photo (characters); the browser makes them about 2-10 KB
 const TEXT_GAP_MS = 700;            // min time between text messages / commands per user
 const IMAGE_GAP_MS = 20_000;        // min time between uploaded images per user
 const GIF_GAP_MS = 5_000;           // min time between GIFs from the GIF library per user
@@ -22,6 +23,8 @@ const REACT_GAP_MS = 150;           // min time between reactions per user
 const VOTE_GAP_MS = 500;            // min time between poll votes per user
 const MAX_ADMIN_TRIES = 5;          // wrong admin passwords before lockout
 const LOCKOUT_MS = 10 * 60 * 1000;  // lockout length
+const HISTORY_MS = 7 * 86400000;    // how long browsers keep chat history (and the server keeps deletion notes)
+const MAX_TOMBS = 2000;             // max deletion notes kept
 const SALT = "action-chat-v1";      // used to scramble IP addresses before storing
 
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏"];
@@ -91,6 +94,7 @@ export class ChatRoom extends DurableObject {
     this.poll = null;        // { id, q, options, votes: { key: index }, open }
     this.trivia = null;      // { id, q, answers, display, status, round, scores, winner }
     this.pin = null;         // { text, until, at }
+    this.tombs = [];         // deletion notes, no text: { k: "d", id } deleted msg, { k: "p", u } purged user, { k: "c" } cleared
     this.photos = new Map(); // userId -> photo (only people online right now)
     this.noPhoto = new Set();// devices whose photo the admin removed (memory only)
     this.rate = new Map();   // userId -> timestamps (memory only)
@@ -107,6 +111,7 @@ export class ChatRoom extends DurableObject {
       this.poll = (await ctx.storage.get("poll")) || null;
       this.trivia = (await ctx.storage.get("trivia")) || null;
       this.pin = (await ctx.storage.get("pin")) || null;
+      this.tombs = (await ctx.storage.get("tombs")) || [];
 
       // Reload photos of people still connected (after the room wakes up); delete any leftovers.
       const live = new Set();
@@ -151,7 +156,14 @@ export class ChatRoom extends DurableObject {
       case "msg": return this.handleMessage(ws, me, data);
       case "react": return this.handleReact(ws, me, data);
       case "vote": return this.handleVote(ws, me, data);
-      case "delete": if (me.admin) this.broadcast({ type: "delete", id: cleanId(data.id) }); return;
+      case "delete": {
+        if (!me.admin) return;
+        const id = cleanId(data.id);
+        if (!id) return;
+        this.broadcast({ type: "delete", id });
+        await this.addTomb({ k: "d", id });
+        return;
+      }
       case "block": if (me.admin) await this.handleBlock(ws, data); return;
       case "unblock": if (me.admin) await this.handleUnblock(ws, data); return;
       case "listBlocked": if (me.admin) this.sendBlockedList(ws); return;
@@ -162,7 +174,15 @@ export class ChatRoom extends DurableObject {
         await this.ctx.storage.put("imagesOn", this.imagesOn);
         this.broadcast({ type: "settings", imagesOn: this.imagesOn });
         return;
-      case "clear": if (me.admin) this.broadcast({ type: "clear", by: me.name }); return;
+      case "clear": {
+        if (!me.admin) return;
+        const at = Date.now();
+        this.broadcast({ type: "clear", by: me.name, at });
+        // Everything older is covered by the clear note, so the older notes are no longer needed.
+        this.tombs = [{ k: "c", at }];
+        await this.ctx.storage.put("tombs", this.tombs);
+        return;
+      }
       case "pollStart": if (me.admin) await this.pollStart(ws, data); return;
       case "pollEnd": if (me.admin) await this.pollEnd(); return;
       case "pollRemove": if (me.admin) await this.pollRemove(); return;
@@ -176,6 +196,26 @@ export class ChatRoom extends DurableObject {
 
   async webSocketClose(ws, code) { this.leave(ws, code); }
   async webSocketError(ws) { this.leave(ws, 1011); }
+
+  // ---------- deletion notes (no message text) ----------
+
+  freshTombs() {
+    const cutoff = Date.now() - HISTORY_MS;
+    return this.tombs.filter((t) => t.at >= cutoff);
+  }
+
+  async addTomb(t) {
+    t.at = Date.now();
+    this.tombs = this.freshTombs();
+    this.tombs.push(t);
+    if (this.tombs.length > MAX_TOMBS) {
+      // Keep the newest notes, but never drop the latest "cleared" note.
+      const lastClear = [...this.tombs].reverse().find((x) => x.k === "c");
+      this.tombs = this.tombs.slice(-MAX_TOMBS);
+      if (lastClear && !this.tombs.includes(lastClear)) this.tombs.unshift(lastClear);
+    }
+    await this.ctx.storage.put("tombs", this.tombs);
+  }
 
   // ---------- join ----------
 
@@ -246,6 +286,7 @@ export class ChatRoom extends DurableObject {
     this.send(ws, {
       type: "welcome",
       version: APP_VERSION,
+      now: Date.now(),
       you: userOf(me),
       photoNote,
       users: this.onlineUsers(true),
@@ -253,6 +294,7 @@ export class ChatRoom extends DurableObject {
       poll,
       trivia: this.triviaPublic(),
       pin: this.pin,
+      tombs: this.freshTombs(),
     });
     const joined = userOf(me);
     if (photo) joined.photo = photo;
@@ -385,7 +427,6 @@ export class ChatRoom extends DurableObject {
     if (p.votes[key] === undefined && Object.keys(p.votes).length >= 5000) return;
     p.votes[key] = idx;
     await this.ctx.storage.put("poll", p);
-    // Send updated counts at most about once a second, even if many people vote at once.
     if (!this.pollTimer) {
       this.pollTimer = setTimeout(() => {
         this.pollTimer = null;
@@ -519,7 +560,10 @@ export class ChatRoom extends DurableObject {
     await this.ctx.storage.put("blocked", this.blocked);
 
     if (t.ph) this.broadcast({ type: "photo", id: t.id, photo: null });
-    if (data.purge) this.broadcast({ type: "purge", userId: t.id });
+    if (data.purge) {
+      this.broadcast({ type: "purge", userId: t.id });
+      await this.addTomb({ k: "p", u: t.id });
+    }
     this.send(target, { type: "rejected", code: "blocked", text: "You have been blocked from this chat." });
     this.leave(target, 4003);
     try { target.close(4003, "Blocked"); } catch {}

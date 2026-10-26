@@ -90,6 +90,9 @@
     background: var(--wm) no-repeat 62% 46% / min(44%, 380px) auto; }
   .notice { text-align: center; color: var(--muted); font-size: 12.5px; margin: 2px auto 12px; padding: 4px 12px;
     background: rgba(255,255,255,.5); border-radius: 12px; width: fit-content; max-width: 100%; }
+  .hist-div { display: flex; align-items: center; gap: 10px; margin: 10px 4px; color: #4a3f6b; font-size: 12px; font-weight: 600; }
+  .hist-div::before, .hist-div::after { content: ""; flex: 1; height: 1px; background: rgba(74,63,107,.35); }
+  .hist-div span { background: rgba(255,255,255,.7); padding: 3px 12px; border-radius: 12px; white-space: nowrap; max-width: 80%; overflow: hidden; text-overflow: ellipsis; }
 
   /* ---------- Top cards: pin, poll, trivia ---------- */
   #topCards { flex: 0 0 auto; max-height: 38%; overflow-y: auto; padding: 10px 14px 0; display: flex; flex-direction: column; gap: 8px; }
@@ -157,6 +160,7 @@
   .pic img { display: block; max-width: min(300px, 100%); max-height: 260px; border-radius: 12px; cursor: zoom-in; background: #fff;
     border: 3px solid rgba(255,255,255,.9); box-shadow: 0 4px 14px rgba(70,40,90,.18); }
   .gif-tag { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.7); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .gone { margin-top: 4px; font-size: 12.5px; color: var(--muted); font-style: italic; background: rgba(255,255,255,.6); padding: 3px 10px; border-radius: 10px; }
   .reacts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
   .chip { display: flex; align-items: center; gap: 4px; padding: 1px 9px; border-radius: 12px; background: rgba(255,255,255,.88); border: 1px solid var(--line); font-size: 13.5px; }
   .chip:hover { border-color: #b8aec4; }
@@ -326,7 +330,7 @@
   <form class="card" id="joinForm" autocomplete="off">
     <img src="/logo.png" alt="Action Chat logo">
     <h1>Action Chat</h1>
-    <p>Pick a name to join. No sign-up needed.<br>Messages are not saved.</p>
+    <p>Pick a name to join. No sign-up needed.<br>Rejoin with the same name to see your last 7 days of chat on this device.</p>
     <input class="field" id="nameInput" maxlength="20" placeholder="Your name" required>
     <input class="field hidden" id="pwInput" type="password" placeholder="Admin password" autocomplete="current-password">
     <div class="av-label">Choose your avatar, or upload your own photo</div>
@@ -357,7 +361,7 @@
     <div class="main">
       <div id="topCards"></div>
       <div id="messages">
-        <div class="notice">Messages are not saved. You only see messages sent after you joined. Type <b>/help</b> for fun commands.</div>
+        <div class="notice">Messages are not saved on the server. Your chat is kept on this device for 7 days. Type <b>/help</b> for fun commands.</div>
       </div>
       <button id="newMsgs" class="hidden">New messages ↓</button>
       <div id="replyBar" class="hidden"><span class="rb-text" id="replyText"></span><button type="button" id="replyCancel" title="Cancel reply">✕</button></div>
@@ -405,9 +409,14 @@
   var GIF_FILTER = "high";
   var MAX_GIF = 2 * 1024 * 1024;
   var MAX_IMG_SIDE = 1280;
-  var PHOTO_SIZE = 80;                 // profile photo size in pixels (sharp at 40px on high-resolution screens)
-  var MAX_PHOTO = 12000;               // profile photo limit in characters (the server accepts up to 16000)
+  var PHOTO_SIZE = 80;
+  var MAX_PHOTO = 12000;
   var PHOTO_KEY = "__photo__";
+  // Chat history kept on this device
+  var HIST_MS = 7 * 86400000;          // 7 days
+  var HIST_MAX = 300;                  // messages per name and room
+  var HIST_IMG_ONE = 400000;           // largest uploaded image kept (characters)
+  var HIST_IMG_TOTAL = 1500000;        // total space for uploaded images (newest kept first)
   var REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏"];
   // Must match the AVATARS list in index.js exactly.
   var AVATARS = ["👶", "🧒", "👧", "👦", "🧑", "👩", "👨", "👱‍♀️", "👱", "👩‍🦰", "👨‍🦰", "👩‍🦱", "👨‍🦱", "👩‍🦳", "👨‍🦳", "👩‍🦲", "👨‍🦲", "🧔", "🧓", "👵", "👴", "👮", "🕵️", "💂", "👷", "🤴", "👸", "🤵", "👰", "🧑‍⚕️", "🧑‍🎓", "🧑‍🏫", "🧑‍🍳", "🧑‍🌾", "🧑‍🔧", "🧑‍💻", "🧑‍🎤", "🧑‍🎨", "🧑‍✈️", "🧑‍🚀", "🧑‍🚒", "🥷", "🦸", "🦹", "🧙", "🧚", "🧛", "🧜", "🧝", "🧞", "🧟", "🎅", "🤶", "🤠", "🦁", "🐯", "🐺", "🦊", "🐻", "🐼", "🐨", "🐸", "🐵", "🦄", "🐙", "🦅", "🐬", "🚀", "⚡", "🔥", "⭐", "🎮", "⚽", "🎸"];
@@ -471,13 +480,14 @@
   var usePhoto = savedAv === PHOTO_KEY && !!myPhoto;
   var myAv = AVATARS.indexOf(savedAv) >= 0 ? savedAv : "";
   var soundOn = load("ac_sound") !== "off";
-  var photos = {};           // userId -> photo
-  var known = {};            // userId -> { id, name, admin, av }
+  var photos = {};
+  var known = {};
   var reacts = {};
   var replyTo = null;
   var poll = null, myVote = null, trivia = null, pin = null;
   var collapsed = {};
   var unread = 0;
+  var hist = [], histKey = "", histTimer = null;
 
   // ---------- small helpers ----------
   function getCid() {
@@ -493,7 +503,11 @@
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function colorFor(name) { var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return COLORS[h % COLORS.length]; }
   function initial(name) { return Array.from(name.trim())[0].toUpperCase(); }
-  function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function fmtTime(ts) {
+    var d = new Date(ts), t = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (new Date().toDateString() === d.toDateString()) return t;
+    return d.toLocaleDateString([], { day: "numeric", month: "short" }) + ", " + t;
+  }
   function isAdminName(n) { return n.trim().toLowerCase() === ADMIN_NAME.toLowerCase(); }
   function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
   function remember(u) { if (u && u.id) known[u.id] = { id: u.id, name: u.name, admin: !!u.admin, av: u.av || "" }; }
@@ -526,6 +540,103 @@
   function toast(text, bad) {
     var t = $("toast"); t.textContent = text; t.className = bad ? "bad" : ""; clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.className = "hidden"; }, 3500);
+  }
+
+  // ---------- chat history kept on this device (7 days) ----------
+  function histKeyFor(name) { return "ac_hist:" + room + ":" + name.trim().toLowerCase(); }
+  function sweepOldHistory() {
+    try {
+      var now = Date.now(), drop = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("ac_hist:") !== 0) continue;
+        var o = null; try { o = JSON.parse(localStorage.getItem(k)); } catch (e) {}
+        if (!o || !o.savedAt || now - o.savedAt > HIST_MS) drop.push(k);
+      }
+      drop.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+  }
+  sweepOldHistory();
+  function loadHistory(key) {
+    try {
+      var o = JSON.parse(localStorage.getItem(key) || "null");
+      if (o && Array.isArray(o.msgs)) return { msgs: o.msgs.filter(function (m) { return m && m.id && m.from && m.ts; }), reacts: o.reacts || {} };
+    } catch (e) {}
+    return { msgs: [], reacts: {} };
+  }
+  function trimHist() {
+    var cutoff = Date.now() - HIST_MS;
+    hist = hist.filter(function (m) { return m.ts >= cutoff; });
+    if (hist.length > HIST_MAX) hist = hist.slice(-HIST_MAX);
+  }
+  function noImage(m) { var c = {}; for (var k in m) c[k] = m[k]; c.image = ""; c.imgGone = true; return c; }
+  function trySave(o) { try { localStorage.setItem(histKey, JSON.stringify(o)); return true; } catch (e) { return false; } }
+  function scheduleSave() { if (!histKey) return; clearTimeout(histTimer); histTimer = setTimeout(saveHistory, 600); }
+  function saveHistory() {
+    clearTimeout(histTimer); histTimer = null;
+    if (!histKey) return;
+    trimHist();
+    if (!hist.length) { store(histKey, ""); return; }
+    // Uploaded images are big: keep the newest ones that fit, show a placeholder for the rest.
+    var budget = HIST_IMG_TOTAL, out = new Array(hist.length);
+    for (var i = hist.length - 1; i >= 0; i--) {
+      var m = hist[i];
+      if (m.kind === "image" && m.image) {
+        if (m.image.length <= HIST_IMG_ONE && m.image.length <= budget) { budget -= m.image.length; out[i] = m; }
+        else out[i] = noImage(m);
+      } else out[i] = m;
+    }
+    var rx = {}; out.forEach(function (m) { if (reacts[m.id]) rx[m.id] = reacts[m.id]; });
+    var data = { v: 1, savedAt: Date.now(), msgs: out, reacts: rx };
+    if (trySave(data)) return;
+    data.msgs = out.map(function (m) { return m.kind === "image" && m.image ? noImage(m) : m; });
+    if (trySave(data)) return;
+    while (data.msgs.length > 20) { data.msgs = data.msgs.slice(Math.floor(data.msgs.length / 2)); if (trySave(data)) return; }
+  }
+  window.addEventListener("pagehide", function () { if (histTimer) saveHistory(); });
+  document.addEventListener("visibilitychange", function () { if (document.hidden && histTimer) saveHistory(); });
+
+  // Deletion notes from the server: removes messages the admin deleted or cleared while this user was away.
+  function applyTombs(tombs) {
+    if (!Array.isArray(tombs) || !tombs.length) return;
+    var del = {}, pur = {}, clearAt = 0;
+    tombs.forEach(function (t) {
+      if (t.k === "d") del[t.id] = 1;
+      else if (t.k === "p") pur[t.u] = 1;
+      else if (t.k === "c") clearAt = Math.max(clearAt, t.at || 0);
+    });
+    function gone(id, uid, ts) { return del[id] || pur[uid] || (clearAt && ts <= clearAt); }
+    var before = hist.length;
+    hist = hist.filter(function (m) { return !gone(m.id, m.from.id, m.ts); });
+    box.querySelectorAll(".msg").forEach(function (r) {
+      if (gone(r.dataset.id, r.dataset.user, +r.dataset.ts)) { delete reacts[r.dataset.id]; r.remove(); }
+    });
+    if (hist.length !== before) scheduleSave();
+    if (!hist.length) removeHistDivider();
+  }
+  function removeHistDivider() { var d = box.querySelector(".hist-div"); if (d) d.remove(); }
+  function restoreHistory(tombs) {
+    box.querySelectorAll(".msg, .sys, .hist-div").forEach(function (n) { n.remove(); });
+    reacts = {};
+    histKey = histKeyFor(myName);
+    var saved = loadHistory(histKey);
+    hist = saved.msgs; trimHist();
+    applyTombs(tombs);
+    hist.forEach(function (m) { if (saved.reacts[m.id]) reacts[m.id] = saved.reacts[m.id]; });
+    hist.forEach(function (m) { addMessage(m, true); });
+    Object.keys(reacts).forEach(renderReacts);
+    if (hist.length) {
+      var dv = el("div", "hist-div"); dv.appendChild(el("span", null, "Saved on this device · last 7 days · new messages below"));
+      box.appendChild(dv);
+    }
+    saveHistory();
+    toBottom();
+  }
+  function clearMyHistory() {
+    hist = []; store(histKey, "");
+    box.querySelectorAll(".msg.hist").forEach(function (n) { delete reacts[n.dataset.id]; n.remove(); });
+    removeHistDivider();
+    toast("Your saved chat history on this device was deleted.");
   }
 
   // ---------- sounds (made in the browser, no files) ----------
@@ -618,7 +729,6 @@
   }
   buildAvPick();
 
-  // Crops the picture to a square, shrinks it to PHOTO_SIZE pixels and compresses it, all on the user's device.
   function makePhoto(file, done) {
     if (!file || !/^image\//.test(file.type || "image/")) return done(null, "Please choose a picture file.");
     if (file.size > 20 * 1024 * 1024) return done(null, "That picture is too large (max 20 MB).");
@@ -654,10 +764,7 @@
   };
 
   $("nameInput").value = load("ac_name");
-  function updatePw() {
-    var adm = isAdminName($("nameInput").value);
-    $("pwInput").classList.toggle("hidden", !adm);
-  }
+  function updatePw() { $("pwInput").classList.toggle("hidden", !isAdminName($("nameInput").value)); }
   $("nameInput").addEventListener("input", updatePw); updatePw();
 
   $("joinForm").addEventListener("submit", function (e) {
@@ -671,6 +778,7 @@
   });
 
   function showJoin(msg) {
+    if (histTimer) saveHistory();
     $("app").classList.add("hidden"); $("join").classList.remove("hidden");
     $("joinBtn").disabled = false; $("joinBtn").textContent = "Join chat";
     $("joinErr").textContent = msg || ""; joined = false;
@@ -730,10 +838,16 @@
         users = {}; d.users.forEach(addUser); mentionRe = null;
         if (d.photoNote === "removed") { forgetMyPhoto(); toast("The admin removed your photo, so your avatar is shown instead.", true); }
         else if (d.photoNote === "invalid") toast("Your photo could not be used. Your avatar is shown instead.", true);
-        if (!joined) { $("join").classList.add("hidden"); $("app").classList.remove("hidden"); $("input").focus(); }
-        else sys("Reconnected.");
-        joined = true;
         document.body.classList.toggle("is-admin", !!me.admin);
+        if (!joined) {
+          $("join").classList.add("hidden"); $("app").classList.remove("hidden");
+          restoreHistory(d.tombs);
+          $("input").focus();
+        } else {
+          applyTombs(d.tombs);
+          sys("Reconnected.");
+        }
+        joined = true;
         poll = d.poll; myVote = d.poll ? d.poll.myVote : null; trivia = d.trivia; pin = d.pin;
         renderCards(); renderUsers(); updateImageButtons(); refreshAvatars();
         clearInterval(pingTimer);
@@ -751,17 +865,22 @@
         refreshAvatars(d.id); renderUsers();
         if (me && d.id === me.id && !d.photo) { forgetMyPhoto(); toast("The admin removed your profile photo.", true); }
         break;
-      case "msg": addMessage(d); break;
-      case "react": applyReact(d); break;
+      case "msg":
+        addMessage(d);
+        hist.push(d); scheduleSave();
+        break;
+      case "react": applyReact(d); scheduleSave(); break;
       case "delete":
         var m = rowOf(d.id); if (m) m.remove(); delete reacts[d.id];
+        hist = hist.filter(function (x) { return x.id !== d.id; }); scheduleSave();
         break;
       case "purge":
-        document.querySelectorAll('.msg[data-user="' + cssEsc(d.userId) + '"]').forEach(function (n) { n.remove(); });
+        document.querySelectorAll('.msg[data-user="' + cssEsc(d.userId) + '"]').forEach(function (n) { delete reacts[n.dataset.id]; n.remove(); });
+        hist = hist.filter(function (x) { return x.from.id !== d.userId; }); scheduleSave();
         break;
       case "clear":
-        document.querySelectorAll("#messages .msg, #messages .sys").forEach(function (n) { n.remove(); });
-        reacts = {};
+        document.querySelectorAll("#messages .msg, #messages .sys, #messages .hist-div").forEach(function (n) { n.remove(); });
+        reacts = {}; hist = []; saveHistory();
         sys("The chat was cleared by the admin.");
         break;
       case "settings":
@@ -844,11 +963,12 @@
     return (d.text || "").replace(/```[\s\S]*?```/g, "[code]").replace(/\s+/g, " ").slice(0, 100);
   }
 
-  function addMessage(d) {
+  // fromHistory = true when the message comes from this device's saved copy (no sounds, no confetti).
+  function addMessage(d, fromHistory) {
     if (!known[d.from.id]) remember(d.from);
     var mine = me && d.from.id === me.id;
-    var stick = nearBottom() || mine;
-    var row = el("div", "msg"); row.dataset.id = d.id; row.dataset.user = d.from.id;
+    var stick = fromHistory || nearBottom() || mine;
+    var row = el("div", "msg" + (fromHistory ? " hist" : "")); row.dataset.id = d.id; row.dataset.user = d.from.id; row.dataset.ts = d.ts;
     row.dataset.search = (d.from.name + " " + (d.text || "") + " " + (d.result || "")).toLowerCase();
 
     if (d.kind === "action") {
@@ -883,11 +1003,13 @@
       if (src) {
         var pic = el("div", "pic"); var img = el("img"); img.alt = "Image from " + d.from.name; img.src = src;
         img.onload = function () { if (stick) toBottom(); };
-        img.onerror = function () { pic.replaceWith(el("div", "sys", "(GIF could not be loaded)")); };
+        img.onerror = function () { pic.replaceWith(el("div", "gone", "(GIF could not be loaded)")); };
         img.onclick = function () { var lb = $("lightbox"); lb.querySelector("img").src = src; lb.classList.remove("hidden"); };
         pic.appendChild(img);
         if (d.kind === "gif" || src.indexOf("data:image/gif") === 0) pic.appendChild(el("span", "gif-tag", "GIF"));
         c.appendChild(pic);
+      } else if (d.kind === "image" && d.imgGone) {
+        c.appendChild(el("div", "gone", "📷 Image no longer kept on this device"));
       }
       row.appendChild(c);
     }
@@ -895,9 +1017,13 @@
 
     applySearch(row);
     box.appendChild(row);
-    var all = box.querySelectorAll(".msg, .sys"); if (all.length > 300) { var first = all[0]; delete reacts[first.dataset.id]; first.remove(); }
+    var all = box.querySelectorAll(".msg, .sys"); if (all.length > 320) { var first = all[0]; delete reacts[first.dataset.id]; first.remove(); }
     if (stick) toBottom(); else $("newMsgs").classList.remove("hidden");
 
+    if (fromHistory) {
+      if (d.kind !== "action" && mentionsMe(d.text) && d.from.name.toLowerCase() !== myName.toLowerCase()) row.classList.add("mentioned");
+      return;
+    }
     if (!mine) {
       var hitMe = d.kind !== "action" && mentionsMe(d.text);
       if (hitMe) { row.classList.add("mentioned"); soundMention(); }
@@ -918,8 +1044,8 @@
     if (d.kind !== "action") add(ICON_REPLY, "Reply", function () { setReply(d); });
     if (me && me.admin) {
       if (d.kind === "text" && d.text) add(ICON_PIN, "Pin as announcement", function () { pinDialog(d.text.slice(0, 200)); });
-      add(ICON_TRASH, "Delete message", function () { send({ type: "delete", id: d.id }); }, "danger");
-      if (!d.from.admin) add(ICON_BAN, "Block " + d.from.name, function () { askBlock(d.from); }, "danger");
+      add(ICON_TRASH, "Delete message for everyone", function () { send({ type: "delete", id: d.id }); }, "danger");
+      if (!d.from.admin && users[d.from.id]) add(ICON_BAN, "Block " + d.from.name, function () { askBlock(d.from); }, "danger");
     }
     return tools;
   }
@@ -1343,12 +1469,15 @@
       item(imagesOn ? "🖼️ Turn images, GIFs and photos off" : "🖼️ Turn images, GIFs and photos on", function () { send({ type: "images", on: !imagesOn }); });
       item("🚫 Blocked users", function () { send({ type: "listBlocked" }); });
       item("🧹 Clear chat for everyone", function () {
-        confirmDialog("Clear the chat?", "This removes all messages from everyone's screen.", "Clear", function () { send({ type: "clear" }); });
+        confirmDialog("Clear the chat?", "This removes all messages from everyone's screen, including the history saved on their devices.", "Clear", function () { send({ type: "clear" }); });
       }, "danger");
       m.appendChild(el("hr"));
     }
     item("❓ Commands and tips", showHelp);
     item(soundOn ? "🔔 Sounds: On" : "🔕 Sounds: Off", function () { soundOn = !soundOn; store("ac_sound", soundOn ? "on" : "off"); toast(soundOn ? "Sounds on" : "Sounds off"); if (soundOn) soundMsg(); });
+    item("🗑️ Delete my saved history", function () {
+      confirmDialog("Delete your saved chat history?", "This deletes the messages saved on this device for \"" + myName + "\". Other people's chats are not affected. New messages will be saved again from now on.", "Delete", clearMyHistory);
+    });
     item("🚪 Leave chat", function () { noReconnect = true; if (ws) ws.close(1000); showJoin(""); });
     m.appendChild(el("hr"));
     var cr = el("div", "credit", credit); cr.appendChild(el("b", null, DEVELOPER)); m.appendChild(cr);
@@ -1393,7 +1522,7 @@
   function askBlock(user) {
     openDialog(function (d) {
       d.appendChild(el("h4", null, "Block " + user.name + "?"));
-      var purge = checkbox(d, "Remove their messages", "Deletes everything they wrote from all screens. Their photo is always removed.", true);
+      var purge = checkbox(d, "Remove their messages", "Deletes everything they wrote from all screens and saved histories. Their photo is always removed.", true);
       var net = checkbox(d, "Also block their internet connection",
         "Stronger, but may also block other people on the same Wi-Fi or office network.", false);
       buttons(d, "Block", function () { send({ type: "block", userId: user.id, purge: purge.checked, byNetwork: net.checked }); });
@@ -1460,6 +1589,7 @@
         .forEach(function (x) { var li = el("li"); li.appendChild(el("code", null, x[0])); li.appendChild(document.createTextNode(x[1])); ul.appendChild(li); });
       ["Hover over a message (or tap it on a phone) to react 👍 or reply ↩.",
        "Words like \"congrats\" or \"happy birthday\" and 🎉 make confetti rain for everyone.",
+       "Rejoin with the same name on this device to see your chat from the last 7 days. Delete it anytime from the ⋮ menu.",
        "Choose an avatar or upload your own photo 📷 on the join screen. Leave the chat to change it.",
        "Turn sounds on or off in the ⋮ menu."]
         .forEach(function (t) { ul.appendChild(el("li", null, t)); });
