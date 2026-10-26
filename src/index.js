@@ -1,4 +1,4 @@
-// Action Chat v2.3.0 - real-time group chat for Cloudflare Workers (free plan).
+// Action Chat v2.3.1 - real-time group chat for Cloudflare Workers (free plan).
 // Developed by Michael Gerontides.
 // Chat messages are never written to the server's disk. Each user's browser keeps its own copy for 7 days.
 // Stored on the server (small, no chat text): blocked users, images on/off, current poll, trivia game,
@@ -9,7 +9,7 @@ import { DurableObject } from "cloudflare:workers";
 import PAGE_HTML from "./page.html";
 import LOGO_PNG from "./logo.png";
 
-const APP_VERSION = "2.3.0";
+const APP_VERSION = "2.3.1";
 
 // ---- Limits (tuned to stay well inside the free plan) ----
 const MAX_FRAME = 3_000_000;        // largest incoming message (about 2 MB image after encoding)
@@ -59,7 +59,16 @@ export default {
     if (url.pathname === "/" || url.pathname === "/index.html") {
       const adminName = cleanName(env.ADMIN_NAME) || "Admin";
       const klipyKey = String(env.KLIPY_KEY || "").replace(/[^A-Za-z0-9_-]/g, "");
-      const html = PAGE_HTML
+      // Safety check: page.html must be the same version as this file. If not, show a clear warning.
+      let page = PAGE_HTML;
+      const m = page.match(/data-page-version="([^"]*)"/);
+      const pageVersion = m ? m[1] : "older than 2.3.1";
+      if (pageVersion !== APP_VERSION) {
+        page = page.replace(/<body([^>]*)>/, '<body$1><div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#b91c1c;color:#fff;padding:10px 14px;font:600 14px/1.4 Segoe UI,Arial,sans-serif;text-align:center">' +
+          "Update incomplete: index.js is v" + APP_VERSION + " but page.html is " + (m ? "v" : "") + pageVersion +
+          ". Upload the new page.html to the src folder on GitHub (the file name must be exactly page.html).</div>");
+      }
+      const html = page
         .replace("__ADMIN_NAME_JSON__", JSON.stringify(adminName).replace(/</g, "\\u003c"))
         .replace("__KLIPY_KEY_JSON__", JSON.stringify(klipyKey))
         .replace("__APP_VERSION_JSON__", JSON.stringify(APP_VERSION));

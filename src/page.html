@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-page-version="2.3.1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -337,6 +337,7 @@
     <div id="avPick"></div>
     <div class="av-hint" id="avHint">📷 Your photo is made small on your device and is only shown while you're online.</div>
     <input type="file" id="photoFile" accept="image/*" class="hidden">
+    <div class="av-hint" id="histInfo"></div>
     <button class="btn" id="joinBtn" type="submit">Join chat</button>
     <div class="err" id="joinErr"></div>
     <div class="credit" id="joinCredit"></div>
@@ -557,6 +558,15 @@
     } catch (e) {}
   }
   sweepOldHistory();
+  var storageOk = (function () { try { localStorage.setItem("ac_test", "1"); localStorage.removeItem("ac_test"); return true; } catch (e) { return false; } })();
+  function updateHistInfo() {
+    var info = $("histInfo"), n = $("nameInput").value.replace(/\s+/g, " ").trim();
+    if (!storageOk) { info.textContent = "⚠️ This browser is blocking storage, so chat history can't be saved here. Open the chat in a normal (not private) window."; info.style.color = "#b91c1c"; return; }
+    info.style.color = "";
+    if (n.length < 2) { info.textContent = ""; return; }
+    var c = loadHistory(histKeyFor(n)).msgs.filter(function (m) { return m.ts >= Date.now() - HIST_MS; }).length;
+    info.textContent = c ? "💾 " + c + " saved message" + (c === 1 ? "" : "s") + " for \"" + n + "\" on this device will be shown." : "💾 No saved messages for this name on this device yet.";
+  }
   function loadHistory(key) {
     try {
       var o = JSON.parse(localStorage.getItem(key) || "null");
@@ -571,7 +581,7 @@
   }
   function noImage(m) { var c = {}; for (var k in m) c[k] = m[k]; c.image = ""; c.imgGone = true; return c; }
   function trySave(o) { try { localStorage.setItem(histKey, JSON.stringify(o)); return true; } catch (e) { return false; } }
-  function scheduleSave() { if (!histKey) return; clearTimeout(histTimer); histTimer = setTimeout(saveHistory, 600); }
+  function scheduleSave() { if (!histKey) return; clearTimeout(histTimer); histTimer = setTimeout(saveHistory, 150); }
   function saveHistory() {
     clearTimeout(histTimer); histTimer = null;
     if (!histKey) return;
@@ -594,6 +604,7 @@
     while (data.msgs.length > 20) { data.msgs = data.msgs.slice(Math.floor(data.msgs.length / 2)); if (trySave(data)) return; }
   }
   window.addEventListener("pagehide", function () { if (histTimer) saveHistory(); });
+  window.addEventListener("beforeunload", function () { if (histTimer) saveHistory(); });
   document.addEventListener("visibilitychange", function () { if (document.hidden && histTimer) saveHistory(); });
 
   // Deletion notes from the server: removes messages the admin deleted or cleared while this user was away.
@@ -765,7 +776,7 @@
 
   $("nameInput").value = load("ac_name");
   function updatePw() { $("pwInput").classList.toggle("hidden", !isAdminName($("nameInput").value)); }
-  $("nameInput").addEventListener("input", updatePw); updatePw();
+  $("nameInput").addEventListener("input", function () { updatePw(); updateHistInfo(); }); updatePw(); updateHistInfo();
 
   $("joinForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -782,7 +793,7 @@
     $("app").classList.add("hidden"); $("join").classList.remove("hidden");
     $("joinBtn").disabled = false; $("joinBtn").textContent = "Join chat";
     $("joinErr").textContent = msg || ""; joined = false;
-    buildAvPick();
+    buildAvPick(); updateHistInfo();
   }
 
   // ---------- connection ----------
